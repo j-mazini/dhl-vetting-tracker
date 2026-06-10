@@ -3,28 +3,30 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>DHL Driver Vetting — Vendor Tracker</title>
+<title>BA Express — Driver Vetting Tracker</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Archivo:ital,wght@0,400;0,500;0,600;0,700;0,800;0,900;1,800&family=Archivo+Expanded:wght@700;800;900&display=swap" rel="stylesheet">
 <style>
     :root {
-        --dhl-yellow: #FFCC00;
-        --dhl-red: #FF3B30;
-        --bg: #0b0d14;
-        --bg-soft: #11141f;
-        --card: rgba(255,255,255,.035);
-        --card-hover: rgba(255,255,255,.055);
-        --line: rgba(255,255,255,.08);
-        --line-strong: rgba(255,255,255,.14);
-        --text: #eef0f6;
-        --text-soft: #a9aec2;
-        --muted: #6b7088;
-        --green: #34d399;
-        --green-dim: rgba(52,211,153,.12);
-        --amber: #fbbf24;
-        --amber-dim: rgba(251,191,36,.12);
-        --red-dim: rgba(255,59,48,.10);
+        --ba-red: #D6372C;
+        --ba-red-deep: #B22A21;
+        --ba-navy: #2E4156;
+        --ba-navy-deep: #22303F;
+        --bg: #f4f6f9;
+        --bg-soft: #ffffff;
+        --card: #ffffff;
+        --card-hover: #fbfcfe;
+        --line: rgba(46,65,86,.12);
+        --line-strong: rgba(46,65,86,.22);
+        --text: #22303d;
+        --text-soft: #4f6275;
+        --muted: #8493a2;
+        --green: #189a55;
+        --green-dim: rgba(24,154,85,.10);
+        --amber: #c47d10;
+        --amber-dim: rgba(196,125,16,.10);
+        --red-dim: rgba(214,55,44,.08);
         --radius: 18px;
     }
 
@@ -34,7 +36,8 @@
 
     body {
         font-family: 'Archivo', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-        background: var(--bg);
+        background: linear-gradient(180deg, #fdfdfe 0%, #f1f4f8 45%, #e9eef5 100%);
+        background-attachment: fixed;
         color: var(--text);
         padding-bottom: 110px;
         -webkit-font-smoothing: antialiased;
@@ -49,20 +52,18 @@
         transform: translateX(-50%);
         width: 900px;
         height: 600px;
-        background: radial-gradient(ellipse at center, rgba(255,204,0,.07), transparent 65%);
+        background: radial-gradient(ellipse at center, rgba(214,55,44,.06), transparent 65%);
         pointer-events: none;
         z-index: 0;
     }
 
-    /* faint diagonal hazard texture at the very top */
+    /* brand accent strip at the very top */
     body::after {
         content: "";
         position: fixed;
         top: 0; left: 0; right: 0;
         height: 3px;
-        background: repeating-linear-gradient(135deg,
-            var(--dhl-yellow) 0 14px, #0b0d14 14px 28px);
-        opacity: .85;
+        background: linear-gradient(90deg, var(--ba-red), var(--ba-navy));
         z-index: 200;
         pointer-events: none;
     }
@@ -72,7 +73,7 @@
         position: sticky;
         top: 0;
         z-index: 100;
-        background: rgba(11,13,20,.78);
+        background: rgba(255,255,255,.82);
         backdrop-filter: blur(20px) saturate(1.4);
         -webkit-backdrop-filter: blur(20px) saturate(1.4);
         border-bottom: 1px solid var(--line);
@@ -99,23 +100,19 @@
         cursor: pointer;
     }
 
-    .brand-badge {
-        background: linear-gradient(135deg, var(--dhl-yellow), #ffdb4d);
-        color: #b00020;
-        font-weight: 900;
-        font-style: italic;
-        padding: 6px 13px;
-        border-radius: 9px;
-        letter-spacing: .5px;
-        font-size: 14px;
-        box-shadow: 0 0 24px rgba(255,204,0,.25);
-        font-family: 'Archivo Expanded', 'Archivo', sans-serif;
+    .brand-logo {
+        height: 46px;
+        width: auto;
+        display: block;
+        flex-shrink: 0;
+        filter: drop-shadow(0 2px 6px rgba(34,48,63,.18));
     }
 
     .brand h1 {
         font-size: 15.5px;
         font-weight: 800;
         letter-spacing: -.2px;
+        color: var(--ba-navy-deep);
         font-family: 'Archivo Expanded', 'Archivo', sans-serif;
     }
 
@@ -144,6 +141,7 @@
         line-height: 1;
         letter-spacing: -.5px;
         font-variant-numeric: tabular-nums;
+        color: var(--ba-navy-deep);
     }
 
     .stat .lbl {
@@ -161,7 +159,7 @@
         font-size: 11.5px;
         font-weight: 700;
         letter-spacing: .3px;
-        background: rgba(255,255,255,.07);
+        background: rgba(46,65,86,.05);
         border: 1px solid var(--line-strong);
         color: var(--text-soft);
         white-space: nowrap;
@@ -170,26 +168,26 @@
 
     .status-pill.progress {
         background: var(--amber-dim);
-        border-color: rgba(251,191,36,.35);
+        border-color: rgba(196,125,16,.35);
         color: var(--amber);
     }
 
     .status-pill.done, .status-pill.approved {
         background: var(--green-dim);
-        border-color: rgba(52,211,153,.4);
+        border-color: rgba(24,154,85,.4);
         color: var(--green);
     }
 
     .status-pill.rejected {
         background: var(--red-dim);
-        border-color: rgba(255,59,48,.35);
-        color: #ff9e98;
+        border-color: rgba(214,55,44,.35);
+        color: var(--ba-red-deep);
     }
 
     .progress-track {
         margin-top: 14px;
         height: 5px;
-        background: rgba(255,255,255,.07);
+        background: rgba(46,65,86,.08);
         border-radius: 99px;
         overflow: hidden;
     }
@@ -197,10 +195,10 @@
     .progress-fill {
         height: 100%;
         width: 0%;
-        background: linear-gradient(90deg, var(--dhl-yellow), #ffe580);
+        background: linear-gradient(90deg, var(--ba-red), #e8625a);
         border-radius: 99px;
         transition: width .6s cubic-bezier(.22,1,.36,1);
-        box-shadow: 0 0 12px rgba(255,204,0,.5);
+        box-shadow: 0 0 12px rgba(214,55,44,.35);
     }
 
     /* ===== Layout ===== */
@@ -234,12 +232,13 @@
         border-radius: var(--radius);
         padding: 18px 20px 16px;
         cursor: pointer;
-        transition: border-color .25s, background .25s, transform .25s;
+        transition: border-color .25s, background .25s, transform .25s, box-shadow .25s;
         position: relative;
         overflow: hidden;
+        box-shadow: 0 1px 3px rgba(34,48,63,.05);
     }
 
-    .summary-card:hover { background: var(--card-hover); transform: translateY(-2px); }
+    .summary-card:hover { background: var(--card-hover); transform: translateY(-2px); box-shadow: 0 8px 24px rgba(34,48,63,.08); }
 
     .summary-card.sel { border-color: var(--line-strong); background: var(--card-hover); }
     .summary-card.sel::after {
@@ -267,14 +266,14 @@
         margin-top: 8px;
     }
 
-    .summary-card.c-all .big { color: var(--text); }
-    .summary-card.c-all.sel::after { background: var(--dhl-yellow); }
+    .summary-card.c-all .big { color: var(--ba-navy-deep); }
+    .summary-card.c-all.sel::after { background: var(--ba-navy); }
     .summary-card.c-active .big { color: var(--amber); }
     .summary-card.c-active.sel::after { background: var(--amber); }
     .summary-card.c-approved .big { color: var(--green); }
     .summary-card.c-approved.sel::after { background: var(--green); }
-    .summary-card.c-rejected .big { color: #ff9e98; }
-    .summary-card.c-rejected.sel::after { background: var(--dhl-red); }
+    .summary-card.c-rejected .big { color: var(--ba-red); }
+    .summary-card.c-rejected.sel::after { background: var(--ba-red); }
 
     /* ===== Dashboard: toolbar ===== */
     .toolbar {
@@ -314,12 +313,13 @@
         font-size: 13px;
         outline: none;
         transition: border-color .2s, background .2s;
+        box-shadow: 0 1px 3px rgba(34,48,63,.05);
     }
 
     .search-box input::placeholder { color: var(--muted); }
 
     .search-box input:focus {
-        border-color: rgba(255,204,0,.45);
+        border-color: rgba(214,55,44,.45);
         background: var(--card-hover);
     }
 
@@ -336,6 +336,7 @@
         animation: rise .45s cubic-bezier(.22,1,.36,1) both;
         position: relative;
         overflow: hidden;
+        box-shadow: 0 1px 3px rgba(34,48,63,.05);
     }
 
     .vendor-card:nth-child(1) { animation-delay: .02s; }
@@ -350,11 +351,11 @@
     .vendor-card:hover {
         background: var(--card-hover);
         border-color: var(--line-strong);
-        box-shadow: 0 14px 40px rgba(0,0,0,.35);
+        box-shadow: 0 14px 40px rgba(34,48,63,.12);
     }
 
-    .vendor-card.st-approved { border-color: rgba(52,211,153,.25); }
-    .vendor-card.st-rejected { border-color: rgba(255,59,48,.22); opacity: .85; }
+    .vendor-card.st-approved { border-color: rgba(24,154,85,.3); }
+    .vendor-card.st-rejected { border-color: rgba(214,55,44,.28); opacity: .85; }
 
     .vendor-card::before {
         content: "";
@@ -365,7 +366,7 @@
     }
     .vendor-card.st-active::before { background: linear-gradient(180deg, var(--amber), transparent); }
     .vendor-card.st-approved::before { background: linear-gradient(180deg, var(--green), transparent); }
-    .vendor-card.st-rejected::before { background: linear-gradient(180deg, var(--dhl-red), transparent); }
+    .vendor-card.st-rejected::before { background: linear-gradient(180deg, var(--ba-red), transparent); }
 
     .vendor-top {
         display: flex;
@@ -377,9 +378,9 @@
     .avatar {
         width: 42px; height: 42px;
         border-radius: 13px;
-        background: rgba(255,204,0,.1);
-        border: 1px solid rgba(255,204,0,.25);
-        color: var(--dhl-yellow);
+        background: rgba(46,65,86,.07);
+        border: 1px solid rgba(46,65,86,.18);
+        color: var(--ba-navy);
         display: flex;
         align-items: center;
         justify-content: center;
@@ -425,7 +426,7 @@
     .vendor-progress {
         margin-top: 14px;
         height: 4px;
-        background: rgba(255,255,255,.07);
+        background: rgba(46,65,86,.08);
         border-radius: 99px;
         overflow: hidden;
     }
@@ -434,12 +435,12 @@
         display: block;
         height: 100%;
         border-radius: 99px;
-        background: linear-gradient(90deg, var(--dhl-yellow), #ffe580);
+        background: linear-gradient(90deg, var(--ba-red), #e8625a);
         transition: width .5s cubic-bezier(.22,1,.36,1);
     }
 
-    .vendor-card.st-approved .vendor-progress i { background: linear-gradient(90deg, var(--green), #7ce8bd); }
-    .vendor-card.st-rejected .vendor-progress i { background: linear-gradient(90deg, var(--dhl-red), #ff7d75); }
+    .vendor-card.st-approved .vendor-progress i { background: linear-gradient(90deg, var(--green), #4fc488); }
+    .vendor-card.st-rejected .vendor-progress i { background: linear-gradient(90deg, var(--ba-red), #e8847e); }
 
     .vendor-steps-lbl {
         display: flex;
@@ -481,6 +482,7 @@
         margin-bottom: 26px;
         position: relative;
         overflow: hidden;
+        box-shadow: 0 1px 3px rgba(34,48,63,.05);
     }
 
     .case-header::before {
@@ -488,7 +490,7 @@
         position: absolute;
         left: 0; top: 0; bottom: 0;
         width: 3px;
-        background: linear-gradient(180deg, var(--dhl-yellow), transparent);
+        background: linear-gradient(180deg, var(--ba-red), transparent);
     }
 
     .case-header-row {
@@ -515,12 +517,13 @@
         transition: color .2s;
     }
 
-    .back-link:hover { color: var(--dhl-yellow); }
+    .back-link:hover { color: var(--ba-red); }
 
     .case-name {
         font-size: 21px;
         font-weight: 900;
         letter-spacing: -.4px;
+        color: var(--ba-navy-deep);
         font-family: 'Archivo Expanded', 'Archivo', sans-serif;
     }
 
@@ -553,21 +556,21 @@
 
     .decision-banner.ok {
         background: var(--green-dim);
-        border: 1px solid rgba(52,211,153,.3);
+        border: 1px solid rgba(24,154,85,.3);
         color: var(--green);
     }
 
     .decision-banner.bad {
         background: var(--red-dim);
-        border: 1px solid rgba(255,59,48,.28);
-        color: #ff9e98;
+        border: 1px solid rgba(214,55,44,.28);
+        color: var(--ba-red-deep);
     }
 
     /* ===== Golden rule ===== */
     .golden-rule {
         position: relative;
-        background: linear-gradient(135deg, rgba(255,204,0,.09), rgba(255,204,0,.03));
-        border: 1px solid rgba(255,204,0,.22);
+        background: linear-gradient(135deg, rgba(214,55,44,.06), rgba(46,65,86,.04));
+        border: 1px solid rgba(214,55,44,.2);
         border-radius: var(--radius);
         padding: 20px 24px;
         display: flex;
@@ -582,7 +585,7 @@
         position: absolute;
         left: 0; top: 0; bottom: 0;
         width: 3px;
-        background: linear-gradient(180deg, var(--dhl-yellow), transparent);
+        background: linear-gradient(180deg, var(--ba-red), transparent);
     }
 
     .golden-rule .icon { font-size: 22px; line-height: 1.3; }
@@ -592,7 +595,7 @@
         font-size: 11px;
         text-transform: uppercase;
         letter-spacing: 1.6px;
-        color: var(--dhl-yellow);
+        color: var(--ba-red);
         margin-bottom: 6px;
         font-weight: 800;
     }
@@ -635,18 +638,19 @@
         border-radius: var(--radius);
         overflow: hidden;
         transition: border-color .3s, background .3s, box-shadow .3s;
+        box-shadow: 0 1px 3px rgba(34,48,63,.05);
     }
 
     .step-card:hover { background: var(--card-hover); }
 
     .step.open .step-card {
         border-color: var(--line-strong);
-        box-shadow: 0 16px 48px rgba(0,0,0,.4);
+        box-shadow: 0 16px 48px rgba(34,48,63,.12);
     }
 
     .step.completed .step-card {
-        border-color: rgba(52,211,153,.28);
-        background: linear-gradient(135deg, rgba(52,211,153,.05), rgba(52,211,153,.015));
+        border-color: rgba(24,154,85,.3);
+        background: linear-gradient(135deg, rgba(24,154,85,.04), rgba(24,154,85,.01));
     }
 
     .step-head {
@@ -662,7 +666,7 @@
         width: 38px;
         height: 38px;
         border-radius: 12px;
-        background: rgba(255,255,255,.05);
+        background: rgba(46,65,86,.05);
         border: 1px solid var(--line-strong);
         display: flex;
         align-items: center;
@@ -677,7 +681,7 @@
 
     .step.completed .step-index {
         background: var(--green-dim);
-        border-color: rgba(52,211,153,.4);
+        border-color: rgba(24,154,85,.4);
         color: var(--green);
     }
 
@@ -700,7 +704,7 @@
         font-size: 11px;
         font-weight: 700;
         color: var(--muted);
-        background: rgba(255,255,255,.05);
+        background: rgba(46,65,86,.05);
         border: 1px solid var(--line);
         padding: 5px 12px;
         border-radius: 999px;
@@ -711,7 +715,7 @@
 
     .step.completed .step-meter {
         background: var(--green-dim);
-        border-color: rgba(52,211,153,.35);
+        border-color: rgba(24,154,85,.35);
         color: var(--green);
     }
 
@@ -762,28 +766,28 @@
         transition: background .15s;
     }
 
-    .check-item:hover { background: rgba(255,255,255,.04); }
+    .check-item:hover { background: rgba(46,65,86,.04); }
 
     .check-item input {
         appearance: none;
         width: 21px;
         height: 21px;
-        border: 2px solid rgba(255,255,255,.22);
+        border: 2px solid rgba(46,65,86,.3);
         border-radius: 7px;
         cursor: pointer;
         flex-shrink: 0;
         margin-top: 1px;
         position: relative;
         transition: all .2s;
-        background: transparent;
+        background: #fff;
     }
 
-    .check-item input:hover { border-color: var(--dhl-yellow); }
+    .check-item input:hover { border-color: var(--ba-red); }
 
     .check-item input:checked {
         background: var(--green);
         border-color: var(--green);
-        box-shadow: 0 0 14px rgba(52,211,153,.35);
+        box-shadow: 0 0 14px rgba(24,154,85,.3);
     }
 
     .check-item input:checked::after {
@@ -793,8 +797,8 @@
         top: 2px;
         width: 5px;
         height: 10px;
-        border-right: 2.5px solid #052e1f;
-        border-bottom: 2.5px solid #052e1f;
+        border-right: 2.5px solid #fff;
+        border-bottom: 2.5px solid #fff;
         transform: rotate(45deg);
     }
 
@@ -808,7 +812,7 @@
     .check-item input:checked ~ .check-text {
         color: var(--muted);
         text-decoration: line-through;
-        text-decoration-color: rgba(107,112,136,.5);
+        text-decoration-color: rgba(132,147,162,.5);
     }
 
     .check-text small {
@@ -834,9 +838,9 @@
         font-size: 10.5px;
         font-weight: 700;
         letter-spacing: .3px;
-        color: var(--dhl-yellow);
-        background: rgba(255,204,0,.08);
-        border: 1px solid rgba(255,204,0,.25);
+        color: var(--ba-red-deep);
+        background: rgba(214,55,44,.07);
+        border: 1px solid rgba(214,55,44,.25);
         border-radius: 999px;
         padding: 4px 11px;
         text-decoration: none !important;
@@ -851,42 +855,42 @@
     }
 
     .check-link:hover {
-        background: rgba(255,204,0,.16);
-        border-color: rgba(255,204,0,.5);
-        box-shadow: 0 0 14px rgba(255,204,0,.15);
+        background: rgba(214,55,44,.13);
+        border-color: rgba(214,55,44,.5);
+        box-shadow: 0 0 14px rgba(214,55,44,.12);
     }
 
     /* ===== Interview panel ===== */
-    .iv-panel { margin: 8px 0 18px; background: rgba(255,204,0,.025); border: 1px solid rgba(255,204,0,.15); border-radius: 16px; overflow: hidden; }
+    .iv-panel { margin: 8px 0 18px; background: rgba(46,65,86,.025); border: 1px solid rgba(46,65,86,.14); border-radius: 16px; overflow: hidden; }
 
-    .iv-tabs { display: flex; border-bottom: 1px solid rgba(255,204,0,.1); overflow-x: auto; scrollbar-width: none; }
+    .iv-tabs { display: flex; border-bottom: 1px solid rgba(46,65,86,.1); overflow-x: auto; scrollbar-width: none; }
     .iv-tabs::-webkit-scrollbar { display: none; }
 
     .iv-tab { flex-shrink: 0; padding: 12px 15px; font-size: 11px; font-weight: 700; font-family: inherit; cursor: pointer; background: none; border: none; color: var(--muted); letter-spacing: .3px; transition: color .2s, background .2s; position: relative; white-space: nowrap; }
-    .iv-tab:hover { color: var(--text-soft); background: rgba(255,255,255,.03); }
-    .iv-tab.active { color: var(--dhl-yellow); background: rgba(255,204,0,.05); }
-    .iv-tab.active::after { content: ""; position: absolute; bottom: 0; left: 0; right: 0; height: 2px; background: var(--dhl-yellow); }
+    .iv-tab:hover { color: var(--text-soft); background: rgba(46,65,86,.04); }
+    .iv-tab.active { color: var(--ba-red); background: rgba(214,55,44,.05); }
+    .iv-tab.active::after { content: ""; position: absolute; bottom: 0; left: 0; right: 0; height: 2px; background: var(--ba-red); }
 
-    .iv-badge { display: inline-block; font-size: 9px; font-weight: 800; padding: 2px 5px; border-radius: 999px; margin-left: 5px; background: rgba(255,255,255,.07); color: var(--muted); vertical-align: middle; }
-    .iv-tab.active .iv-badge { background: rgba(255,204,0,.15); color: var(--dhl-yellow); }
-    .iv-badge.red { background: rgba(255,59,48,.15); color: #ff9e98; }
+    .iv-badge { display: inline-block; font-size: 9px; font-weight: 800; padding: 2px 5px; border-radius: 999px; margin-left: 5px; background: rgba(46,65,86,.08); color: var(--muted); vertical-align: middle; }
+    .iv-tab.active .iv-badge { background: rgba(214,55,44,.12); color: var(--ba-red); }
+    .iv-badge.red { background: rgba(214,55,44,.12); color: var(--ba-red-deep); }
 
     .iv-body { padding: 18px 20px 20px; }
 
     .iv-sec { display: none; }
     .iv-sec.active { display: block; }
 
-    .iv-h { font-size: 10px; text-transform: uppercase; letter-spacing: 1.5px; font-weight: 800; color: var(--dhl-yellow); margin-bottom: 3px; }
+    .iv-h { font-size: 10px; text-transform: uppercase; letter-spacing: 1.5px; font-weight: 800; color: var(--ba-red); margin-bottom: 3px; }
     .iv-sub { font-size: 11.5px; color: var(--muted); margin-bottom: 13px; line-height: 1.5; }
     .iv-sep { font-size: 10px; text-transform: uppercase; letter-spacing: 1.3px; font-weight: 800; color: var(--muted); margin: 18px 0 10px; padding-bottom: 7px; border-bottom: 1px solid var(--line); }
 
     .iv-checks { list-style: none; }
     .iv-check { display: flex; align-items: flex-start; gap: 10px; padding: 8px 10px; border-radius: 10px; cursor: pointer; transition: background .15s; font-size: 12.5px; color: var(--text-soft); line-height: 1.45; }
-    .iv-check:hover { background: rgba(255,255,255,.04); }
-    .iv-check input[type="checkbox"] { appearance: none; width: 18px; height: 18px; border: 2px solid rgba(255,255,255,.2); border-radius: 6px; cursor: pointer; flex-shrink: 0; margin-top: 1px; position: relative; transition: all .2s; background: transparent; }
-    .iv-check input:hover { border-color: var(--dhl-yellow); }
-    .iv-check input:checked { background: var(--green); border-color: var(--green); box-shadow: 0 0 10px rgba(52,211,153,.28); }
-    .iv-check input:checked::after { content: ""; position: absolute; left: 4px; top: 1.5px; width: 5px; height: 9px; border-right: 2px solid #052e1f; border-bottom: 2px solid #052e1f; transform: rotate(45deg); }
+    .iv-check:hover { background: rgba(46,65,86,.04); }
+    .iv-check input[type="checkbox"] { appearance: none; width: 18px; height: 18px; border: 2px solid rgba(46,65,86,.28); border-radius: 6px; cursor: pointer; flex-shrink: 0; margin-top: 1px; position: relative; transition: all .2s; background: #fff; }
+    .iv-check input:hover { border-color: var(--ba-red); }
+    .iv-check input:checked { background: var(--green); border-color: var(--green); box-shadow: 0 0 10px rgba(24,154,85,.25); }
+    .iv-check input:checked::after { content: ""; position: absolute; left: 4px; top: 1.5px; width: 5px; height: 9px; border-right: 2px solid #fff; border-bottom: 2px solid #fff; transform: rotate(45deg); }
 
     .score-row { display: flex; align-items: center; gap: 12px; padding: 10px 0; border-bottom: 1px solid var(--line); }
     .score-row:last-of-type { border-bottom: none; }
@@ -894,33 +898,33 @@
     .score-lbl { font-size: 12.5px; font-weight: 600; color: var(--text-soft); }
     .score-def { font-size: 10.5px; color: var(--muted); margin-top: 2px; line-height: 1.4; min-height: 14px; }
     .score-btns { display: flex; gap: 4px; flex-shrink: 0; }
-    .score-btn { width: 30px; height: 30px; border: 1px solid var(--line); border-radius: 8px; background: rgba(255,255,255,.04); color: var(--muted); font-size: 12px; font-weight: 700; cursor: pointer; font-family: inherit; transition: all .15s; flex-shrink: 0; }
-    .score-btn:hover { background: rgba(255,255,255,.09); color: var(--text-soft); border-color: var(--line-strong); }
-    .score-btn.sel.s1, .score-btn.sel.s2 { background: var(--red-dim); border-color: rgba(255,59,48,.4); color: #ff9e98; }
-    .score-btn.sel.s3 { background: var(--amber-dim); border-color: rgba(251,191,36,.4); color: var(--amber); }
-    .score-btn.sel.s4, .score-btn.sel.s5 { background: var(--green-dim); border-color: rgba(52,211,153,.4); color: var(--green); }
+    .score-btn { width: 30px; height: 30px; border: 1px solid var(--line); border-radius: 8px; background: #fff; color: var(--muted); font-size: 12px; font-weight: 700; cursor: pointer; font-family: inherit; transition: all .15s; flex-shrink: 0; }
+    .score-btn:hover { background: rgba(46,65,86,.06); color: var(--text-soft); border-color: var(--line-strong); }
+    .score-btn.sel.s1, .score-btn.sel.s2 { background: var(--red-dim); border-color: rgba(214,55,44,.4); color: var(--ba-red-deep); }
+    .score-btn.sel.s3 { background: var(--amber-dim); border-color: rgba(196,125,16,.4); color: var(--amber); }
+    .score-btn.sel.s4, .score-btn.sel.s5 { background: var(--green-dim); border-color: rgba(24,154,85,.4); color: var(--green); }
     .score-cur { font-size: 12px; font-weight: 800; font-variant-numeric: tabular-nums; color: var(--muted); min-width: 30px; text-align: right; flex-shrink: 0; }
 
     .iv-total-row { display: flex; align-items: center; justify-content: space-between; padding: 14px 0 10px; border-top: 1px solid var(--line-strong); margin-top: 4px; }
     .iv-total-lbl { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 1.2px; color: var(--muted); }
-    .iv-total-val { font-size: 24px; font-weight: 900; font-variant-numeric: tabular-nums; letter-spacing: -1px; color: var(--text); font-family: 'Archivo Expanded', 'Archivo', sans-serif; }
+    .iv-total-val { font-size: 24px; font-weight: 900; font-variant-numeric: tabular-nums; letter-spacing: -1px; color: var(--ba-navy-deep); font-family: 'Archivo Expanded', 'Archivo', sans-serif; }
 
     .iv-dec { padding: 11px 16px; border-radius: 12px; font-size: 12.5px; font-weight: 800; letter-spacing: .2px; text-align: center; }
-    .iv-dec.dec-none { background: rgba(255,255,255,.05); border: 1px solid var(--line); color: var(--muted); }
-    .iv-dec.dec-hire { background: var(--green-dim); border: 1px solid rgba(52,211,153,.35); color: var(--green); }
-    .iv-dec.dec-cond { background: var(--amber-dim); border: 1px solid rgba(251,191,36,.35); color: var(--amber); }
-    .iv-dec.dec-second { background: rgba(255,204,0,.08); border: 1px solid rgba(255,204,0,.25); color: var(--dhl-yellow); }
-    .iv-dec.dec-decline { background: var(--red-dim); border: 1px solid rgba(255,59,48,.35); color: #ff9e98; }
+    .iv-dec.dec-none { background: rgba(46,65,86,.04); border: 1px solid var(--line); color: var(--muted); }
+    .iv-dec.dec-hire { background: var(--green-dim); border: 1px solid rgba(24,154,85,.35); color: var(--green); }
+    .iv-dec.dec-cond { background: var(--amber-dim); border: 1px solid rgba(196,125,16,.35); color: var(--amber); }
+    .iv-dec.dec-second { background: rgba(46,65,86,.06); border: 1px solid rgba(46,65,86,.25); color: var(--ba-navy); }
+    .iv-dec.dec-decline { background: var(--red-dim); border: 1px solid rgba(214,55,44,.35); color: var(--ba-red-deep); }
 
     .iv-thresholds { display: grid; grid-template-columns: 1fr 1fr; gap: 7px; margin-bottom: 14px; }
     .iv-thresh { padding: 10px 12px; border-radius: 10px; font-size: 11px; line-height: 1.4; }
     .iv-thresh b { display: block; font-size: 15px; font-weight: 900; margin-bottom: 1px; }
-    .iv-thresh.dec-hire { background: var(--green-dim); border: 1px solid rgba(52,211,153,.22); color: var(--green); }
-    .iv-thresh.dec-cond { background: var(--amber-dim); border: 1px solid rgba(251,191,36,.22); color: var(--amber); }
-    .iv-thresh.dec-second { background: rgba(255,204,0,.06); border: 1px solid rgba(255,204,0,.18); color: var(--dhl-yellow); }
-    .iv-thresh.dec-decline { background: var(--red-dim); border: 1px solid rgba(255,59,48,.18); color: #ff9e98; }
+    .iv-thresh.dec-hire { background: var(--green-dim); border: 1px solid rgba(24,154,85,.22); color: var(--green); }
+    .iv-thresh.dec-cond { background: var(--amber-dim); border: 1px solid rgba(196,125,16,.22); color: var(--amber); }
+    .iv-thresh.dec-second { background: rgba(46,65,86,.05); border: 1px solid rgba(46,65,86,.18); color: var(--ba-navy); }
+    .iv-thresh.dec-decline { background: var(--red-dim); border: 1px solid rgba(214,55,44,.18); color: var(--ba-red-deep); }
 
-    .iv-info { margin-top: 12px; padding: 12px 14px; background: rgba(255,255,255,.03); border: 1px solid var(--line); border-radius: 12px; font-size: 12px; color: var(--muted); line-height: 1.65; }
+    .iv-info { margin-top: 12px; padding: 12px 14px; background: rgba(46,65,86,.03); border: 1px solid var(--line); border-radius: 12px; font-size: 12px; color: var(--muted); line-height: 1.65; }
     .iv-info strong { display: block; font-size: 10px; text-transform: uppercase; letter-spacing: 1.3px; color: var(--text-soft); font-weight: 800; margin-bottom: 5px; }
 
     .hint {
@@ -929,7 +933,7 @@
         line-height: 1.7;
         margin-top: 12px;
         padding: 13px 16px;
-        background: rgba(255,255,255,.03);
+        background: rgba(46,65,86,.03);
         border: 1px solid var(--line);
         border-radius: 12px;
     }
@@ -940,9 +944,9 @@
         margin-top: 12px;
         padding: 14px 16px;
         background: var(--red-dim);
-        border: 1px solid rgba(255,59,48,.25);
+        border: 1px solid rgba(214,55,44,.25);
         border-radius: 12px;
-        color: #ff9e98;
+        color: var(--ba-red-deep);
     }
 
     .warn strong {
@@ -951,7 +955,7 @@
         font-size: 10.5px;
         text-transform: uppercase;
         letter-spacing: 1.4px;
-        color: var(--dhl-red);
+        color: var(--ba-red);
         font-weight: 800;
     }
 
@@ -977,41 +981,42 @@
 
     .btn-ghost:hover {
         color: var(--text);
-        border-color: rgba(255,255,255,.3);
-        background: rgba(255,255,255,.04);
+        border-color: rgba(46,65,86,.4);
+        background: rgba(46,65,86,.04);
     }
 
     .btn-main {
-        background: var(--dhl-yellow);
-        color: #1a1500;
-        box-shadow: 0 4px 20px rgba(255,204,0,.25);
+        background: var(--ba-red);
+        color: #fff;
+        box-shadow: 0 4px 20px rgba(214,55,44,.3);
     }
 
     .btn-main:hover {
         transform: translateY(-2px);
-        box-shadow: 0 8px 28px rgba(255,204,0,.4);
+        box-shadow: 0 8px 28px rgba(214,55,44,.4);
+        background: var(--ba-red-deep);
     }
 
     .btn-approve {
         background: var(--green-dim);
-        border: 1px solid rgba(52,211,153,.4);
+        border: 1px solid rgba(24,154,85,.4);
         color: var(--green);
     }
 
     .btn-approve:hover {
-        background: rgba(52,211,153,.22);
-        box-shadow: 0 4px 18px rgba(52,211,153,.2);
+        background: rgba(24,154,85,.18);
+        box-shadow: 0 4px 18px rgba(24,154,85,.18);
     }
 
     .btn-reject {
         background: var(--red-dim);
-        border: 1px solid rgba(255,59,48,.35);
-        color: #ff9e98;
+        border: 1px solid rgba(214,55,44,.35);
+        color: var(--ba-red-deep);
     }
 
     .btn-reject:hover {
-        background: rgba(255,59,48,.2);
-        box-shadow: 0 4px 18px rgba(255,59,48,.18);
+        background: rgba(214,55,44,.15);
+        box-shadow: 0 4px 18px rgba(214,55,44,.15);
     }
 
     .btn-danger-ghost {
@@ -1021,8 +1026,8 @@
     }
 
     .btn-danger-ghost:hover {
-        border-color: rgba(255,59,48,.4);
-        color: #ff9e98;
+        border-color: rgba(214,55,44,.4);
+        color: var(--ba-red-deep);
     }
 
     /* ===== Footer actions ===== */
@@ -1031,7 +1036,7 @@
         bottom: 0;
         left: 0;
         right: 0;
-        background: rgba(11,13,20,.8);
+        background: rgba(255,255,255,.85);
         backdrop-filter: blur(20px) saturate(1.4);
         -webkit-backdrop-filter: blur(20px) saturate(1.4);
         border-top: 1px solid var(--line);
@@ -1051,7 +1056,7 @@
     .modal-backdrop {
         position: fixed;
         inset: 0;
-        background: rgba(5,6,10,.7);
+        background: rgba(34,48,63,.4);
         backdrop-filter: blur(8px);
         -webkit-backdrop-filter: blur(8px);
         z-index: 300;
@@ -1071,7 +1076,7 @@
         border: 1px solid var(--line-strong);
         border-radius: 22px;
         padding: 28px;
-        box-shadow: 0 40px 120px rgba(0,0,0,.6);
+        box-shadow: 0 40px 120px rgba(34,48,63,.3);
         animation: modalIn .35s cubic-bezier(.22,1,.36,1) both;
         position: relative;
         overflow: hidden;
@@ -1082,9 +1087,7 @@
         position: absolute;
         top: 0; left: 0; right: 0;
         height: 3px;
-        background: repeating-linear-gradient(135deg,
-            var(--dhl-yellow) 0 14px, transparent 14px 28px);
-        opacity: .6;
+        background: linear-gradient(90deg, var(--ba-red), var(--ba-navy));
     }
 
     @keyframes modalIn {
@@ -1096,6 +1099,7 @@
         font-size: 17px;
         font-weight: 900;
         letter-spacing: -.3px;
+        color: var(--ba-navy-deep);
         font-family: 'Archivo Expanded', 'Archivo', sans-serif;
     }
 
@@ -1125,10 +1129,10 @@
         color: var(--muted);
     }
 
-    .field label .req { color: var(--dhl-yellow); }
+    .field label .req { color: var(--ba-red); }
 
     .field input, .field select, .field textarea {
-        background: var(--card);
+        background: #fff;
         border: 1px solid var(--line);
         border-radius: 11px;
         padding: 11px 13px;
@@ -1145,16 +1149,16 @@
     .field textarea { resize: vertical; min-height: 80px; line-height: 1.6; }
 
     .field input:focus, .field select:focus, .field textarea:focus {
-        border-color: rgba(255,204,0,.5);
-        background: var(--card-hover);
+        border-color: rgba(214,55,44,.5);
+        background: #fff;
     }
 
-    .field input.invalid { border-color: rgba(255,59,48,.55); }
+    .field input.invalid { border-color: rgba(214,55,44,.55); }
 
-    .field select option { background: var(--bg-soft); color: var(--text); }
+    .field select option { background: #fff; color: var(--text); }
 
     .field input[type="date"]::-webkit-calendar-picker-indicator {
-        filter: invert(.6);
+        filter: invert(.4);
         cursor: pointer;
     }
 
@@ -1163,6 +1167,66 @@
         gap: 10px;
         justify-content: flex-end;
         margin-top: 24px;
+    }
+
+    .doc-download-card {
+        margin-top: 20px;
+        padding: 14px 16px;
+        background: rgba(46,65,86,.04);
+        border: 1px solid rgba(46,65,86,.18);
+        border-radius: 14px;
+        display: flex;
+        align-items: center;
+        gap: 14px;
+    }
+
+    .doc-download-card .doc-icon {
+        font-size: 26px;
+        flex-shrink: 0;
+        line-height: 1;
+    }
+
+    .doc-download-card .doc-info { flex: 1; min-width: 0; }
+
+    .doc-download-card .doc-title {
+        font-size: 12.5px;
+        font-weight: 800;
+        color: var(--text);
+        letter-spacing: -.1px;
+    }
+
+    .doc-download-card .doc-sub {
+        font-size: 11px;
+        color: var(--muted);
+        margin-top: 3px;
+        line-height: 1.5;
+    }
+
+    .btn-download {
+        flex-shrink: 0;
+        background: var(--ba-red);
+        color: #fff;
+        border: none;
+        border-radius: 10px;
+        padding: 9px 16px;
+        font-size: 12px;
+        font-weight: 800;
+        cursor: pointer;
+        font-family: inherit;
+        letter-spacing: .2px;
+        text-decoration: none;
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        transition: all .2s;
+        white-space: nowrap;
+        box-shadow: 0 3px 14px rgba(214,55,44,.25);
+    }
+
+    .btn-download:hover {
+        transform: translateY(-1px);
+        box-shadow: 0 6px 20px rgba(214,55,44,.4);
+        background: var(--ba-red-deep);
     }
 
     @media (max-width: 720px) {
@@ -1183,7 +1247,7 @@
     <div class="topbar-inner">
         <div class="topbar-row">
             <div class="brand" onclick="showDashboard()" title="Back to dashboard">
-                <div class="brand-badge">DHL</div>
+                <img class="brand-logo" src="BA_logo.png" alt="BA Express">
                 <h1 id="brandTitle">Driver Vetting — Vendor Tracker
                     <span>BA Express · Compliance · SOP v1.0</span>
                 </h1>
@@ -1316,6 +1380,15 @@
                 <input type="text" id="fOwner" placeholder="Admin responsible" autocomplete="off">
             </div>
         </div>
+        <div class="doc-download-card">
+            <div class="doc-icon">📋</div>
+            <div class="doc-info">
+                <div class="doc-title">Required Documents Checklist</div>
+                <div class="doc-sub">Download and send this checklist to the driver before the interview — they must bring all original documents on the day.</div>
+            </div>
+            <a class="btn-download" href="Required Documents Checklist.docx" download="Required Documents Checklist.docx">↓ Download</a>
+        </div>
+
         <div class="modal-actions">
             <button class="btn btn-ghost" onclick="closeModal()">Cancel</button>
             <button class="btn btn-main" onclick="addVendor()">＋ Add vendor</button>
@@ -1892,11 +1965,285 @@ function toggleStep(si) {
     document.querySelectorAll('#timeline .step')[si].classList.toggle('open');
 }
 
+/* =====================================================
+   Interview panel helpers
+===================================================== */
+const PREP_ITEMS = [
+    "Candidate's phone interview notes and application",
+    'Company presentation materials/brochures',
+    'Sample delivery documents (POD, exception forms)',
+    'Basic map reading test materials',
+    'Calculator for numeracy test',
+    'Competency assessment forms',
+    'Document collection checklist',
+    'Contract draft for reference',
+    'Company policies summary'
+];
+
+const COMP_ITEMS = [
+    { k:'comm', label:'Communication Skills',          desc:['Cannot communicate effectively','Struggles with clear communication','Adequate for customer interaction','Clear communication, minor issues','Articulate, confident, excellent English'] },
+    { k:'cust', label:'Customer Service Orientation',  desc:['No customer service orientation','Limited understanding','Basic customer service awareness','Good understanding of customer service','Natural customer focus, great examples'] },
+    { k:'prob', label:'Problem-Solving Ability',       desc:['Cannot solve basic problems','Struggles with complex problems','Basic problem-solving skills','Good analytical approach','Creative, logical, quick thinking'] },
+    { k:'time', label:'Time Management & Organization',desc:['No time management ability','Poor organizational skills','Basic time management','Good organizational skills','Excellent planning and prioritization'] },
+    { k:'rely', label:'Reliability & Work Ethic',      desc:['Unreliable, poor work ethic','Some reliability concerns','Generally reliable','Reliable with good work attitude','Exceptional reliability, strong work ethic'] },
+    { k:'adap', label:'Adaptability & Flexibility',    desc:['Cannot adapt to change','Struggles with change','Manages change adequately','Adapts well to change','Thrives on change, very flexible'] },
+    { k:'tech', label:'Technical Aptitude',            desc:['Cannot use basic technology','Struggles with technology','Basic tech skills','Good with technology','Very tech-savvy, quick learner'] }
+];
+
+const PRAC_ITEMS = [
+    { k:'map', label:'Map Reading & Navigation',  desc:['Poor planning, major route issues','Below average','Good route with minor inefficiencies','Good route','Perfect route, excellent time estimation'] },
+    { k:'num', label:'Numeracy & Calculations',   desc:['Multiple errors, struggles with basic math','Below average','Most correct, some minor errors','Good accuracy','All correct, quick calculations'] },
+    { k:'doc', label:'Document Handling',         desc:['Multiple errors, poor attention to detail','Below average','Good completion with minor omissions','Good attention to detail','Perfect completion, excellent attention to detail'] }
+];
+
+const DOC_ITEMS = [
+    'Valid ID / Passport — check expiry, verify identity',
+    'UK Driving License — check categories, endorsements, expiry',
+    'Driver License Sharecode — note code for DVLA check',
+    'Right to Work Documentation — verify work authorization',
+    'National Insurance Number — confirm format and validity',
+    'DBS / CRB Certificate — must be clear, check date',
+    'Proof of Address — must be within 3 months',
+    'Professional References — contact details verified',
+    'Emergency Contact Details — name, relationship, phone',
+    'Medical Information — any conditions affecting driving',
+    'Bank Details — for salary payments (if progressing)',
+    'Start Date Availability — earliest possible start date'
+];
+
+const REDFLAG_ITEMS = [
+    'Inconsistencies in employment history',
+    'Negative attitude toward previous employers',
+    'Unrealistic salary expectations',
+    'Inflexibility with working conditions',
+    'Poor personal presentation',
+    'Late arrival without valid reason',
+    'Aggressive or inappropriate behavior',
+    'Cannot provide required documents',
+    'Very poor English communication',
+    'Cannot complete basic practical tests',
+    'Shows no interest in customer service',
+    'Appears unreliable or uncommitted',
+    'Cannot work independently',
+    'No understanding of job requirements'
+];
+
+const NEXT_ITEMS = ['Send job offer','Schedule second interview','Send decline letter','Additional document collection required'];
+
+function calcIvTotal(iv) {
+    return Object.values(iv.comp).reduce((s,n) => s+n, 0) +
+           Object.values(iv.prac).reduce((s,n) => s+n, 0);
+}
+
+function autoDecision(total, iv) {
+    if (total === 0) return { cls:'dec-none', label:'— not yet assessed —' };
+    const hasLow = [...Object.values(iv.comp), ...Object.values(iv.prac)].some(n => n > 0 && n <= 2);
+    if (total >= 38 && !hasLow) return { cls:'dec-hire',    label:'HIRE — Strong Candidate (38+ pts)' };
+    if (total >= 32)            return { cls:'dec-cond',    label:'HIRE — Conditional (32–37 pts)' };
+    if (total >= 28)            return { cls:'dec-second',  label:'Second Interview Recommended (28–31 pts)' };
+    return                             { cls:'dec-decline', label:'DECLINE (below 28 pts)' };
+}
+
+function ivChk(type, idx, checked) {
+    return '<label class="iv-check"><input type="checkbox" ' + (checked ? 'checked' : '') + ' onchange="setIvChk(\'' + type + '\',' + idx + ',this.checked)"><span>' + esc(type === 'prep' ? PREP_ITEMS[idx] : type === 'doc' ? DOC_ITEMS[idx] : type === 'flag' ? REDFLAG_ITEMS[idx] : NEXT_ITEMS[idx]) + '</span></label>';
+}
+
+function scoreRow(item, group, iv) {
+    const cur = iv[group][item.k];
+    return '<div class="score-row">' +
+        '<div class="score-label-col"><div class="score-lbl">' + esc(item.label) + '</div>' +
+        '<div class="score-def" id="sd-' + item.k + '">' + (cur ? esc(item.desc[cur-1]) : '') + '</div></div>' +
+        '<div class="score-btns">' + [1,2,3,4,5].map(n =>
+            '<button class="score-btn s' + n + (cur===n?' sel':'') + '" data-g="' + group + '" data-k="' + item.k + '" onclick="setIvScore(\'' + group + '\',\'' + item.k + '\',' + n + ')">' + n + '</button>'
+        ).join('') + '</div>' +
+        '<div class="score-cur" id="sc-' + item.k + '">' + (cur||'—') + '/5</div>' +
+    '</div>';
+}
+
+function renderInterviewPanel(iv) {
+    const total = calcIvTotal(iv);
+    const auto  = autoDecision(total, iv);
+    const prepDone = iv.prepChecks.filter(Boolean).length;
+    const docDone  = iv.docChecks.filter(Boolean).length;
+    const flagCnt  = iv.redFlags.filter(Boolean).length;
+    const scored   = [...Object.values(iv.comp),...Object.values(iv.prac)].filter(n=>n>0).length;
+
+    const decLabel = iv.decision==='hire-strong' ? 'Hire ✓' : iv.decision==='hire-cond' ? 'Conditional' : iv.decision==='second' ? '2nd IV' : iv.decision==='decline' ? 'Decline' : '';
+
+    const tabs = [
+        { l:'📋 Prep',     b: prepDone+'/'+ PREP_ITEMS.length, bRed: false },
+        { l:'🎤 Record',   b: iv.outcome ? iv.outcome.split(' ')[0] : '', bRed: false },
+        { l:'⭐ Scoring',  b: scored>0 ? total+'/50' : '', bRed: false },
+        { l:'📄 Documents',b: docDone+'/12', bRed: false },
+        { l:'🚩 Red Flags',b: flagCnt>0 ? flagCnt+' flags' : '', bRed: flagCnt>0 },
+        { l:'✅ Decision', b: decLabel, bRed: false }
+    ];
+
+    const tabBar = '<div class="iv-tabs">' + tabs.map((t,i) =>
+        '<button class="iv-tab' + (ivTab===i?' active':'') + '" onclick="setIvTab(' + i + ')">' + t.l +
+        (t.b ? '<span class="iv-badge' + (t.bRed?' red':'') + '">' + esc(t.b) + '</span>' : '') +
+        '</button>'
+    ).join('') + '</div>';
+
+    // ── TAB 0: PREP ──────────────────────────────────────────────
+    const secPrep =
+        '<div class="iv-sec' + (ivTab===0?' active':'') + '">' +
+        '<div class="iv-h">Pre-Interview Setup</div><div class="iv-sub">Complete 15 minutes before the interview · ' + prepDone + '/' + PREP_ITEMS.length + ' items ready</div>' +
+        '<ul class="iv-checks">' + PREP_ITEMS.map((_,i) => ivChk('prep',i,iv.prepChecks[i])).join('') + '</ul>' +
+        '<div class="iv-info"><strong>📍 Interview Environment</strong>Location: Private meeting room or office · Duration: 45–60 min · Attendees: HR Representative + Direct Supervisor · Materials: Water, note-taking materials, evaluation forms</div>' +
+        '<div class="iv-info"><strong>📨 Candidate Confirmation (send 24h before)</strong>"Hello [Name], this is a reminder of your interview tomorrow at [time] at [address]. Please bring all original documents from our checklist. The interview will take approximately 1 hour."</div>' +
+        '</div>';
+
+    // ── TAB 1: RECORD ─────────────────────────────────────────────
+    const secRecord =
+        '<div class="iv-sec' + (ivTab===1?' active':'') + '">' +
+        '<div class="iv-h">Interview Record</div><div class="iv-sub">Core details and notes for the case file</div>' +
+        '<div class="form-grid">' +
+            '<div class="field"><label>Interview date</label><input type="date" value="' + esc(iv.date||'') + '" onchange="setIvTxt(\'date\',this.value)"></div>' +
+            '<div class="field"><label>Start time</label><input type="time" value="' + esc(iv.startTime||'') + '" onchange="setIvTxt(\'startTime\',this.value)"></div>' +
+            '<div class="field"><label>HR Interviewer</label><input type="text" placeholder="HR Representative" value="' + esc(iv.interviewer||'') + '" onblur="setIvTxt(\'interviewer\',this.value)"></div>' +
+            '<div class="field"><label>Direct Supervisor</label><input type="text" placeholder="Supervisor name" value="' + esc(iv.supervisorName||'') + '" onblur="setIvTxt(\'supervisorName\',this.value)"></div>' +
+            '<div class="field"><label>Location</label><input type="text" placeholder="e.g. Birmingham SC" value="' + esc(iv.location||'') + '" onblur="setIvTxt(\'location\',this.value)"></div>' +
+            '<div class="field"><label>Interview outcome</label><select onchange="setIvTxt(\'outcome\',this.value)">' +
+                ['','Pass','Refer — needs follow-up','Fail'].map(o => '<option value="' + esc(o) + '"' + (iv.outcome===o?' selected':'') + '>' + esc(o||'— not assessed —') + '</option>').join('') +
+            '</select></div>' +
+            '<div class="field full"><label>Interview notes</label><textarea rows="4" placeholder="History discussion, driving experience, explanations given…" onblur="setIvTxt(\'notes\',this.value)">' + esc(iv.notes||'') + '</textarea></div>' +
+        '</div>' +
+        '<div class="iv-sep">Observations</div>' +
+        '<div class="form-grid">' +
+            '<div class="field full"><label>Strengths identified</label><textarea rows="2" placeholder="Key strengths observed…" onblur="setIvTxt(\'strengths\',this.value)">' + esc(iv.strengths||'') + '</textarea></div>' +
+            '<div class="field full"><label>Areas for development</label><textarea rows="2" placeholder="Gaps or concerns noted…" onblur="setIvTxt(\'development\',this.value)">' + esc(iv.development||'') + '</textarea></div>' +
+            '<div class="field full"><label>Questions asked by candidate</label><textarea rows="2" placeholder="Questions raised by the candidate…" onblur="setIvTxt(\'candidateQuestions\',this.value)">' + esc(iv.candidateQuestions||'') + '</textarea></div>' +
+            '<div class="field full"><label>Overall impression</label><textarea rows="2" placeholder="General assessment and impression…" onblur="setIvTxt(\'overall\',this.value)">' + esc(iv.overall||'') + '</textarea></div>' +
+        '</div>' +
+        '</div>';
+
+    // ── TAB 2: SCORING ───────────────────────────────────────────
+    const secScore =
+        '<div class="iv-sec' + (ivTab===2?' active':'') + '">' +
+        '<div class="iv-h">Core Competencies</div><div class="iv-sub">Score each 1–5 · 1=Inadequate · 3=Satisfactory · 5=Excellent</div>' +
+        COMP_ITEMS.map(item => scoreRow(item,'comp',iv)).join('') +
+        '<div class="iv-sep">Practical Tests — administer during Phase 4</div>' +
+        PRAC_ITEMS.map(item => scoreRow(item,'prac',iv)).join('') +
+        '<div class="iv-total-row"><span class="iv-total-lbl">Total Score (max 50)</span><span class="iv-total-val" id="ivTotalScore">' + total + '/50</span></div>' +
+        '<div class="iv-dec ' + auto.cls + '" id="ivAutoDecision">' + esc(auto.label) + '</div>' +
+        '<div class="iv-info" style="margin-top:12px"><strong>Practical Test Questions — Numeracy</strong>"If you deliver 45 packages in 6 hours, what\'s your average per hour?" · "A customer pays £12.50 COD, gives £20 — what\'s the change?" · "Your route is 87 miles, van does 28 mpg — gallons needed?" · "Start 8:30 AM, 6 deliveries × 15 min + 45 min driving — finish time?"</div>' +
+        '</div>';
+
+    // ── TAB 3: DOCUMENTS ─────────────────────────────────────────
+    const secDocs =
+        '<div class="iv-sec' + (ivTab===3?' active':'') + '">' +
+        '<div class="iv-h">Document Collection</div><div class="iv-sub">Original + photocopy required · ' + docDone + '/12 collected</div>' +
+        '<ul class="iv-checks">' + DOC_ITEMS.map((_,i) => ivChk('doc',i,iv.docChecks[i])).join('') + '</ul>' +
+        '<div class="iv-sep">Verification Notes</div>' +
+        '<div class="field full"><textarea rows="7" placeholder="ID/Passport: ___ Expiry: ___&#10;Driving License: ___ Expiry: ___&#10;Endorsements: ___&#10;DBS Date: ___ Status: ___&#10;Right to Work: ___&#10;Any Concerns: ___" onblur="setIvTxt(\'docNotes\',this.value)">' + esc(iv.docNotes||'') + '</textarea></div>' +
+        '</div>';
+
+    // ── TAB 4: RED FLAGS ─────────────────────────────────────────
+    const secFlags =
+        '<div class="iv-sec' + (ivTab===4?' active':'') + '">' +
+        '<div class="iv-h">Immediate Concerns' + (flagCnt>0 ? ' <span class="iv-badge red">' + flagCnt + ' flagged</span>' : '') + '</div>' +
+        '<div class="iv-sub">Tick any that apply — each is an automatic decline factor</div>' +
+        '<ul class="iv-checks">' + [0,1,2,3,4,5,6,7].map(i => ivChk('flag',i,iv.redFlags[i])).join('') + '</ul>' +
+        '<div class="iv-sep">Performance Concerns</div>' +
+        '<ul class="iv-checks">' + [8,9,10,11,12,13].map(i => ivChk('flag',i,iv.redFlags[i])).join('') + '</ul>' +
+        '<div class="field full" style="margin-top:12px"><label>Red flag notes</label><textarea rows="3" placeholder="Details on any flags raised…" onblur="setIvTxt(\'redFlagNotes\',this.value)">' + esc(iv.redFlagNotes||'') + '</textarea></div>' +
+        '</div>';
+
+    // ── TAB 5: DECISION ──────────────────────────────────────────
+    const decOptions = [
+        {v:'', l:'— not yet decided —'},
+        {v:'hire-strong', l:'HIRE — Strong Candidate  (38+ pts)'},
+        {v:'hire-cond',   l:'HIRE — Conditional  (32–37 pts)'},
+        {v:'second',      l:'Second Interview Required  (28–31 pts)'},
+        {v:'decline',     l:'DECLINE  (below 28 pts)'}
+    ];
+    const secDecision =
+        '<div class="iv-sec' + (ivTab===5?' active':'') + '">' +
+        '<div class="iv-h">Scoring Thresholds</div>' +
+        '<div class="iv-thresholds">' +
+            '<div class="iv-thresh dec-hire"><b>38+</b>Hire — Strong</div>' +
+            '<div class="iv-thresh dec-cond"><b>32–37</b>Hire — Conditional</div>' +
+            '<div class="iv-thresh dec-second"><b>28–31</b>Second Interview</div>' +
+            '<div class="iv-thresh dec-decline"><b>&lt;28</b>Decline</div>' +
+        '</div>' +
+        '<div class="iv-total-row"><span class="iv-total-lbl">Calculated score</span><span class="iv-total-val">' + total + '/50</span></div>' +
+        '<div class="iv-dec ' + auto.cls + '" style="margin-bottom:16px">' + esc(auto.label) + '</div>' +
+        '<div class="field full"><label>Formal decision</label><select onchange="setIvDecision(this.value)">' +
+            decOptions.map(d => '<option value="' + esc(d.v) + '"' + (iv.decision===d.v?' selected':'') + '>' + esc(d.l) + '</option>').join('') +
+        '</select></div>' +
+        (iv.decision==='hire-cond' ? '<div class="field full" style="margin-top:10px"><label>Conditions / requirements</label><textarea rows="3" placeholder="Specify training, probation, or retest requirements…" onblur="setIvTxt(\'conditions\',this.value)">' + esc(iv.conditions||'') + '</textarea></div>' : '') +
+        '<div class="iv-sep">Next Steps</div>' +
+        '<ul class="iv-checks">' + NEXT_ITEMS.map((_,i) => ivChk('next',i,iv.nextSteps[i])).join('') + '</ul>' +
+        '<div class="form-grid" style="margin-top:14px">' +
+            '<div class="field"><label>HR signature</label><input type="text" placeholder="Name / initials" value="' + esc(iv.hrSig||'') + '" onblur="setIvTxt(\'hrSig\',this.value)"></div>' +
+            '<div class="field"><label>Supervisor signature</label><input type="text" placeholder="Name / initials" value="' + esc(iv.supervisorSig||'') + '" onblur="setIvTxt(\'supervisorSig\',this.value)"></div>' +
+        '</div>' +
+        '</div>';
+
+    return '<div class="iv-panel">' + tabBar + '<div class="iv-body">' + secPrep + secRecord + secScore + secDocs + secFlags + secDecision + '</div></div>';
+}
+
+function setIvTab(tab) {
+    ivTab = tab;
+    document.querySelectorAll('.iv-tab').forEach((b,i) => b.classList.toggle('active', i===tab));
+    document.querySelectorAll('.iv-sec').forEach((s,i) => s.classList.toggle('active', i===tab));
+}
+
+function setIvScore(group, key, val) {
+    const v = getVendor(currentId);
+    v.interview[group][key] = v.interview[group][key] === val ? 0 : val; // toggle off if same
+    saveStore();
+    updateScorePanel(v.interview);
+}
+
+function updateScorePanel(iv) {
+    const total = calcIvTotal(iv);
+    const auto  = autoDecision(total, iv);
+
+    [...COMP_ITEMS, ...PRAC_ITEMS].forEach(item => {
+        const group = COMP_ITEMS.includes(item) ? 'comp' : 'prac';
+        const cur = iv[group][item.k];
+        document.querySelectorAll('.score-btn[data-k="' + item.k + '"]').forEach(btn => {
+            const n = parseInt(btn.textContent);
+            btn.className = 'score-btn s' + n + (cur===n ? ' sel' : '');
+        });
+        const defEl = document.getElementById('sd-' + item.k);
+        const curEl = document.getElementById('sc-' + item.k);
+        if (defEl) defEl.textContent = cur ? item.desc[cur-1] : '';
+        if (curEl) curEl.textContent = (cur||'—') + '/5';
+    });
+
+    const totalEl = document.getElementById('ivTotalScore');
+    const autoEl  = document.getElementById('ivAutoDecision');
+    if (totalEl) totalEl.textContent = total + '/50';
+    if (autoEl) { autoEl.className = 'iv-dec ' + auto.cls; autoEl.textContent = auto.label; }
+}
+
+function setIvChk(type, idx, checked) {
+    const v = getVendor(currentId);
+    const arr = type==='prep' ? v.interview.prepChecks : type==='doc' ? v.interview.docChecks : type==='flag' ? v.interview.redFlags : v.interview.nextSteps;
+    arr[idx] = checked;
+    saveStore();
+}
+
+function setIvTxt(field, value) {
+    const v = getVendor(currentId);
+    v.interview[field] = value;
+    saveStore();
+}
+
+function setIvDecision(value) {
+    const v = getVendor(currentId);
+    v.interview.decision = value;
+    saveStore();
+    renderCase(); // re-render to show/hide conditions textarea + update header pill
+}
+
 function setInterview(field, value) {
     const v = getVendor(currentId);
     v.interview[field] = value;
     saveStore();
-    // only the outcome changes something visible elsewhere (the pill in the step head)
     if (field === 'outcome') renderCase();
 }
 
@@ -1972,12 +2319,25 @@ function exportReport() {
     out += 'Overall progress: ' + pct + '% (' + done + '/' + TOTAL_ITEMS + ' items) · Steps complete: ' + vendorDoneSteps(v) + '/' + STEPS.length + '\n';
 
     const iv = v.interview || {};
-    if (iv.date || iv.interviewer || iv.outcome || iv.notes) {
-        out += '\n--- FACE-TO-FACE INTERVIEW ---\n';
-        out += 'Date: ' + (iv.date ? fmtDate(iv.date) : '—') + ' · Interviewer: ' + (iv.interviewer || '—') + ' · Location: ' + (iv.location || '—') + '\n';
-        out += 'Outcome: ' + (iv.outcome || 'not assessed') + '\n';
-        if (iv.notes) out += 'Notes: ' + iv.notes + '\n';
-    }
+    out += '\n--- FACE-TO-FACE INTERVIEW ---\n';
+    out += 'Date: ' + (iv.date ? fmtDate(iv.date) : '—') + (iv.startTime ? ' ' + iv.startTime : '') + '\n';
+    out += 'Interviewers: ' + (iv.interviewer||'—') + (iv.supervisorName ? ' / ' + iv.supervisorName : '') + ' · Location: ' + (iv.location||'—') + '\n';
+    out += 'Outcome: ' + (iv.outcome||'not assessed') + '\n';
+    const total = calcIvTotal(iv); const auto = autoDecision(total, iv);
+    out += 'Score: ' + total + '/50 · Recommendation: ' + auto.label + '\n';
+    if (iv.decision) out += 'Formal decision: ' + (iv.decision==='hire-strong'?'HIRE — Strong':iv.decision==='hire-cond'?'HIRE — Conditional':iv.decision==='second'?'Second Interview':iv.decision==='decline'?'DECLINE':'—') + '\n';
+    if (iv.conditions) out += 'Conditions: ' + iv.conditions + '\n';
+    out += '\nCOMPETENCY SCORES:\n';
+    COMP_ITEMS.forEach(item => out += '  ' + item.label + ': ' + (iv.comp[item.k]||'—') + '/5' + (iv.comp[item.k] ? ' — ' + item.desc[iv.comp[item.k]-1] : '') + '\n');
+    out += 'PRACTICAL TESTS:\n';
+    PRAC_ITEMS.forEach(item => out += '  ' + item.label + ': ' + (iv.prac[item.k]||'—') + '/5\n');
+    if (iv.notes) out += '\nInterview notes: ' + iv.notes + '\n';
+    if (iv.strengths) out += 'Strengths: ' + iv.strengths + '\n';
+    if (iv.development) out += 'Development areas: ' + iv.development + '\n';
+    if (iv.overall) out += 'Overall impression: ' + iv.overall + '\n';
+    const flagged = REDFLAG_ITEMS.filter((_,i) => iv.redFlags[i]);
+    if (flagged.length) out += 'RED FLAGS: ' + flagged.join('; ') + '\n';
+    if (iv.hrSig || iv.supervisorSig) out += 'Signed: HR=' + (iv.hrSig||'—') + ' · Supervisor=' + (iv.supervisorSig||'—') + '\n';
     out += '\n';
 
     let idx = 0;
