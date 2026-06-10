@@ -1,0 +1,2013 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>DHL Driver Vetting — Vendor Tracker</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Archivo:ital,wght@0,400;0,500;0,600;0,700;0,800;0,900;1,800&family=Archivo+Expanded:wght@700;800;900&display=swap" rel="stylesheet">
+<style>
+    :root {
+        --dhl-yellow: #FFCC00;
+        --dhl-red: #FF3B30;
+        --bg: #0b0d14;
+        --bg-soft: #11141f;
+        --card: rgba(255,255,255,.035);
+        --card-hover: rgba(255,255,255,.055);
+        --line: rgba(255,255,255,.08);
+        --line-strong: rgba(255,255,255,.14);
+        --text: #eef0f6;
+        --text-soft: #a9aec2;
+        --muted: #6b7088;
+        --green: #34d399;
+        --green-dim: rgba(52,211,153,.12);
+        --amber: #fbbf24;
+        --amber-dim: rgba(251,191,36,.12);
+        --red-dim: rgba(255,59,48,.10);
+        --radius: 18px;
+    }
+
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    html { scroll-behavior: smooth; }
+
+    body {
+        font-family: 'Archivo', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+        background: var(--bg);
+        color: var(--text);
+        padding-bottom: 110px;
+        -webkit-font-smoothing: antialiased;
+    }
+
+    /* ambient glow */
+    body::before {
+        content: "";
+        position: fixed;
+        top: -300px;
+        left: 50%;
+        transform: translateX(-50%);
+        width: 900px;
+        height: 600px;
+        background: radial-gradient(ellipse at center, rgba(255,204,0,.07), transparent 65%);
+        pointer-events: none;
+        z-index: 0;
+    }
+
+    /* faint diagonal hazard texture at the very top */
+    body::after {
+        content: "";
+        position: fixed;
+        top: 0; left: 0; right: 0;
+        height: 3px;
+        background: repeating-linear-gradient(135deg,
+            var(--dhl-yellow) 0 14px, #0b0d14 14px 28px);
+        opacity: .85;
+        z-index: 200;
+        pointer-events: none;
+    }
+
+    /* ===== Topbar ===== */
+    .topbar {
+        position: sticky;
+        top: 0;
+        z-index: 100;
+        background: rgba(11,13,20,.78);
+        backdrop-filter: blur(20px) saturate(1.4);
+        -webkit-backdrop-filter: blur(20px) saturate(1.4);
+        border-bottom: 1px solid var(--line);
+    }
+
+    .topbar-inner {
+        max-width: 980px;
+        margin: 0 auto;
+        padding: 18px 24px 16px;
+    }
+
+    .topbar-row {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 16px;
+        flex-wrap: wrap;
+    }
+
+    .brand {
+        display: flex;
+        align-items: center;
+        gap: 13px;
+        cursor: pointer;
+    }
+
+    .brand-badge {
+        background: linear-gradient(135deg, var(--dhl-yellow), #ffdb4d);
+        color: #b00020;
+        font-weight: 900;
+        font-style: italic;
+        padding: 6px 13px;
+        border-radius: 9px;
+        letter-spacing: .5px;
+        font-size: 14px;
+        box-shadow: 0 0 24px rgba(255,204,0,.25);
+        font-family: 'Archivo Expanded', 'Archivo', sans-serif;
+    }
+
+    .brand h1 {
+        font-size: 15.5px;
+        font-weight: 800;
+        letter-spacing: -.2px;
+        font-family: 'Archivo Expanded', 'Archivo', sans-serif;
+    }
+
+    .brand span {
+        display: block;
+        font-size: 10.5px;
+        font-weight: 500;
+        color: var(--muted);
+        letter-spacing: 1.4px;
+        text-transform: uppercase;
+        margin-top: 3px;
+        font-family: 'Archivo', sans-serif;
+    }
+
+    .top-stats {
+        display: flex;
+        align-items: center;
+        gap: 22px;
+    }
+
+    .stat { text-align: right; }
+
+    .stat .num {
+        font-size: 19px;
+        font-weight: 800;
+        line-height: 1;
+        letter-spacing: -.5px;
+        font-variant-numeric: tabular-nums;
+    }
+
+    .stat .lbl {
+        font-size: 9.5px;
+        color: var(--muted);
+        text-transform: uppercase;
+        letter-spacing: 1.2px;
+        margin-top: 4px;
+        font-weight: 600;
+    }
+
+    .status-pill {
+        padding: 7px 15px;
+        border-radius: 999px;
+        font-size: 11.5px;
+        font-weight: 700;
+        letter-spacing: .3px;
+        background: rgba(255,255,255,.07);
+        border: 1px solid var(--line-strong);
+        color: var(--text-soft);
+        white-space: nowrap;
+        transition: all .3s;
+    }
+
+    .status-pill.progress {
+        background: var(--amber-dim);
+        border-color: rgba(251,191,36,.35);
+        color: var(--amber);
+    }
+
+    .status-pill.done, .status-pill.approved {
+        background: var(--green-dim);
+        border-color: rgba(52,211,153,.4);
+        color: var(--green);
+    }
+
+    .status-pill.rejected {
+        background: var(--red-dim);
+        border-color: rgba(255,59,48,.35);
+        color: #ff9e98;
+    }
+
+    .progress-track {
+        margin-top: 14px;
+        height: 5px;
+        background: rgba(255,255,255,.07);
+        border-radius: 99px;
+        overflow: hidden;
+    }
+
+    .progress-fill {
+        height: 100%;
+        width: 0%;
+        background: linear-gradient(90deg, var(--dhl-yellow), #ffe580);
+        border-radius: 99px;
+        transition: width .6s cubic-bezier(.22,1,.36,1);
+        box-shadow: 0 0 12px rgba(255,204,0,.5);
+    }
+
+    /* ===== Layout ===== */
+    .wrap {
+        position: relative;
+        z-index: 1;
+        max-width: 980px;
+        margin: 32px auto 0;
+        padding: 0 24px;
+    }
+
+    .view { display: none; }
+    .view.active { display: block; animation: viewIn .4s cubic-bezier(.22,1,.36,1) both; }
+
+    @keyframes viewIn {
+        from { opacity: 0; transform: translateY(12px); }
+        to { opacity: 1; transform: translateY(0); }
+    }
+
+    /* ===== Dashboard: summary cards ===== */
+    .summary-grid {
+        display: grid;
+        grid-template-columns: repeat(4, 1fr);
+        gap: 12px;
+        margin-bottom: 26px;
+    }
+
+    .summary-card {
+        background: var(--card);
+        border: 1px solid var(--line);
+        border-radius: var(--radius);
+        padding: 18px 20px 16px;
+        cursor: pointer;
+        transition: border-color .25s, background .25s, transform .25s;
+        position: relative;
+        overflow: hidden;
+    }
+
+    .summary-card:hover { background: var(--card-hover); transform: translateY(-2px); }
+
+    .summary-card.sel { border-color: var(--line-strong); background: var(--card-hover); }
+    .summary-card.sel::after {
+        content: "";
+        position: absolute;
+        left: 0; right: 0; bottom: 0;
+        height: 2px;
+    }
+
+    .summary-card .big {
+        font-size: 30px;
+        font-weight: 900;
+        letter-spacing: -1px;
+        font-variant-numeric: tabular-nums;
+        font-family: 'Archivo Expanded', 'Archivo', sans-serif;
+        line-height: 1;
+    }
+
+    .summary-card .cap {
+        font-size: 10px;
+        text-transform: uppercase;
+        letter-spacing: 1.4px;
+        font-weight: 700;
+        color: var(--muted);
+        margin-top: 8px;
+    }
+
+    .summary-card.c-all .big { color: var(--text); }
+    .summary-card.c-all.sel::after { background: var(--dhl-yellow); }
+    .summary-card.c-active .big { color: var(--amber); }
+    .summary-card.c-active.sel::after { background: var(--amber); }
+    .summary-card.c-approved .big { color: var(--green); }
+    .summary-card.c-approved.sel::after { background: var(--green); }
+    .summary-card.c-rejected .big { color: #ff9e98; }
+    .summary-card.c-rejected.sel::after { background: var(--dhl-red); }
+
+    /* ===== Dashboard: toolbar ===== */
+    .toolbar {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        margin-bottom: 18px;
+        flex-wrap: wrap;
+    }
+
+    .search-box {
+        flex: 1;
+        min-width: 200px;
+        position: relative;
+    }
+
+    .search-box svg {
+        position: absolute;
+        left: 14px;
+        top: 50%;
+        transform: translateY(-50%);
+        width: 15px; height: 15px;
+        stroke: var(--muted);
+        fill: none;
+        stroke-width: 2;
+        pointer-events: none;
+    }
+
+    .search-box input {
+        width: 100%;
+        background: var(--card);
+        border: 1px solid var(--line);
+        border-radius: 12px;
+        padding: 12px 16px 12px 40px;
+        color: var(--text);
+        font-family: inherit;
+        font-size: 13px;
+        outline: none;
+        transition: border-color .2s, background .2s;
+    }
+
+    .search-box input::placeholder { color: var(--muted); }
+
+    .search-box input:focus {
+        border-color: rgba(255,204,0,.45);
+        background: var(--card-hover);
+    }
+
+    /* ===== Vendor cards ===== */
+    .vendor-list { display: flex; flex-direction: column; gap: 12px; }
+
+    .vendor-card {
+        background: var(--card);
+        border: 1px solid var(--line);
+        border-radius: var(--radius);
+        padding: 18px 22px;
+        cursor: pointer;
+        transition: border-color .25s, background .25s, box-shadow .25s;
+        animation: rise .45s cubic-bezier(.22,1,.36,1) both;
+        position: relative;
+        overflow: hidden;
+    }
+
+    .vendor-card:nth-child(1) { animation-delay: .02s; }
+    .vendor-card:nth-child(2) { animation-delay: .06s; }
+    .vendor-card:nth-child(3) { animation-delay: .10s; }
+    .vendor-card:nth-child(4) { animation-delay: .14s; }
+    .vendor-card:nth-child(5) { animation-delay: .18s; }
+    .vendor-card:nth-child(6) { animation-delay: .22s; }
+    .vendor-card:nth-child(7) { animation-delay: .26s; }
+    .vendor-card:nth-child(8) { animation-delay: .30s; }
+
+    .vendor-card:hover {
+        background: var(--card-hover);
+        border-color: var(--line-strong);
+        box-shadow: 0 14px 40px rgba(0,0,0,.35);
+    }
+
+    .vendor-card.st-approved { border-color: rgba(52,211,153,.25); }
+    .vendor-card.st-rejected { border-color: rgba(255,59,48,.22); opacity: .85; }
+
+    .vendor-card::before {
+        content: "";
+        position: absolute;
+        left: 0; top: 0; bottom: 0;
+        width: 3px;
+        background: var(--line-strong);
+    }
+    .vendor-card.st-active::before { background: linear-gradient(180deg, var(--amber), transparent); }
+    .vendor-card.st-approved::before { background: linear-gradient(180deg, var(--green), transparent); }
+    .vendor-card.st-rejected::before { background: linear-gradient(180deg, var(--dhl-red), transparent); }
+
+    .vendor-top {
+        display: flex;
+        align-items: center;
+        gap: 14px;
+        flex-wrap: wrap;
+    }
+
+    .avatar {
+        width: 42px; height: 42px;
+        border-radius: 13px;
+        background: rgba(255,204,0,.1);
+        border: 1px solid rgba(255,204,0,.25);
+        color: var(--dhl-yellow);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-weight: 900;
+        font-size: 14px;
+        letter-spacing: .5px;
+        flex-shrink: 0;
+        font-family: 'Archivo Expanded', 'Archivo', sans-serif;
+    }
+
+    .vendor-name-group { flex: 1; min-width: 0; }
+
+    .vendor-name {
+        font-size: 15px;
+        font-weight: 800;
+        letter-spacing: -.2px;
+    }
+
+    .vendor-meta {
+        font-size: 11.5px;
+        color: var(--muted);
+        margin-top: 3px;
+        line-height: 1.4;
+    }
+
+    .vendor-meta b { color: var(--text-soft); font-weight: 600; }
+
+    .vendor-right {
+        display: flex;
+        align-items: center;
+        gap: 14px;
+    }
+
+    .mini-pct {
+        font-size: 12px;
+        font-weight: 800;
+        font-variant-numeric: tabular-nums;
+        color: var(--text-soft);
+        min-width: 38px;
+        text-align: right;
+    }
+
+    .vendor-progress {
+        margin-top: 14px;
+        height: 4px;
+        background: rgba(255,255,255,.07);
+        border-radius: 99px;
+        overflow: hidden;
+    }
+
+    .vendor-progress i {
+        display: block;
+        height: 100%;
+        border-radius: 99px;
+        background: linear-gradient(90deg, var(--dhl-yellow), #ffe580);
+        transition: width .5s cubic-bezier(.22,1,.36,1);
+    }
+
+    .vendor-card.st-approved .vendor-progress i { background: linear-gradient(90deg, var(--green), #7ce8bd); }
+    .vendor-card.st-rejected .vendor-progress i { background: linear-gradient(90deg, var(--dhl-red), #ff7d75); }
+
+    .vendor-steps-lbl {
+        display: flex;
+        justify-content: space-between;
+        font-size: 10.5px;
+        color: var(--muted);
+        margin-top: 8px;
+        font-variant-numeric: tabular-nums;
+        letter-spacing: .3px;
+    }
+
+    /* ===== Empty state ===== */
+    .empty {
+        text-align: center;
+        padding: 70px 24px;
+        border: 1px dashed var(--line-strong);
+        border-radius: var(--radius);
+        color: var(--muted);
+        animation: rise .45s cubic-bezier(.22,1,.36,1) both;
+    }
+
+    .empty .glyph { font-size: 38px; margin-bottom: 14px; }
+
+    .empty h3 {
+        color: var(--text-soft);
+        font-size: 15px;
+        font-weight: 700;
+        margin-bottom: 6px;
+    }
+
+    .empty p { font-size: 12.5px; line-height: 1.6; }
+
+    /* ===== Case view header ===== */
+    .case-header {
+        background: var(--card);
+        border: 1px solid var(--line);
+        border-radius: var(--radius);
+        padding: 22px 24px;
+        margin-bottom: 26px;
+        position: relative;
+        overflow: hidden;
+    }
+
+    .case-header::before {
+        content: "";
+        position: absolute;
+        left: 0; top: 0; bottom: 0;
+        width: 3px;
+        background: linear-gradient(180deg, var(--dhl-yellow), transparent);
+    }
+
+    .case-header-row {
+        display: flex;
+        align-items: flex-start;
+        gap: 16px;
+        flex-wrap: wrap;
+    }
+
+    .back-link {
+        display: inline-flex;
+        align-items: center;
+        gap: 7px;
+        background: none;
+        border: none;
+        color: var(--muted);
+        font-family: inherit;
+        font-size: 12px;
+        font-weight: 700;
+        cursor: pointer;
+        padding: 0;
+        margin-bottom: 16px;
+        letter-spacing: .4px;
+        transition: color .2s;
+    }
+
+    .back-link:hover { color: var(--dhl-yellow); }
+
+    .case-name {
+        font-size: 21px;
+        font-weight: 900;
+        letter-spacing: -.4px;
+        font-family: 'Archivo Expanded', 'Archivo', sans-serif;
+    }
+
+    .case-meta {
+        font-size: 12px;
+        color: var(--muted);
+        margin-top: 7px;
+        line-height: 1.7;
+    }
+
+    .case-meta b { color: var(--text-soft); font-weight: 600; }
+
+    .case-decision {
+        display: flex;
+        gap: 9px;
+        margin-left: auto;
+        flex-wrap: wrap;
+    }
+
+    .decision-banner {
+        margin-top: 16px;
+        padding: 13px 16px;
+        border-radius: 12px;
+        font-size: 12.5px;
+        line-height: 1.6;
+        display: none;
+    }
+
+    .decision-banner.show { display: block; }
+
+    .decision-banner.ok {
+        background: var(--green-dim);
+        border: 1px solid rgba(52,211,153,.3);
+        color: var(--green);
+    }
+
+    .decision-banner.bad {
+        background: var(--red-dim);
+        border: 1px solid rgba(255,59,48,.28);
+        color: #ff9e98;
+    }
+
+    /* ===== Golden rule ===== */
+    .golden-rule {
+        position: relative;
+        background: linear-gradient(135deg, rgba(255,204,0,.09), rgba(255,204,0,.03));
+        border: 1px solid rgba(255,204,0,.22);
+        border-radius: var(--radius);
+        padding: 20px 24px;
+        display: flex;
+        gap: 16px;
+        align-items: flex-start;
+        margin-bottom: 30px;
+        overflow: hidden;
+    }
+
+    .golden-rule::before {
+        content: "";
+        position: absolute;
+        left: 0; top: 0; bottom: 0;
+        width: 3px;
+        background: linear-gradient(180deg, var(--dhl-yellow), transparent);
+    }
+
+    .golden-rule .icon { font-size: 22px; line-height: 1.3; }
+
+    .golden-rule strong {
+        display: block;
+        font-size: 11px;
+        text-transform: uppercase;
+        letter-spacing: 1.6px;
+        color: var(--dhl-yellow);
+        margin-bottom: 6px;
+        font-weight: 800;
+    }
+
+    .golden-rule p {
+        font-size: 13.5px;
+        color: var(--text-soft);
+        line-height: 1.65;
+    }
+
+    .golden-rule em { color: var(--text); font-style: italic; }
+
+    /* ===== Steps ===== */
+    .step {
+        position: relative;
+        margin-bottom: 14px;
+        animation: rise .5s cubic-bezier(.22,1,.36,1) both;
+    }
+
+    @keyframes rise {
+        from { opacity: 0; transform: translateY(14px); }
+        to { opacity: 1; transform: translateY(0); }
+    }
+
+    .step:nth-child(1) { animation-delay: .02s; }
+    .step:nth-child(2) { animation-delay: .06s; }
+    .step:nth-child(3) { animation-delay: .10s; }
+    .step:nth-child(4) { animation-delay: .14s; }
+    .step:nth-child(5) { animation-delay: .18s; }
+    .step:nth-child(6) { animation-delay: .22s; }
+    .step:nth-child(7) { animation-delay: .26s; }
+    .step:nth-child(8) { animation-delay: .30s; }
+    .step:nth-child(9) { animation-delay: .34s; }
+    .step:nth-child(10) { animation-delay: .38s; }
+    .step:nth-child(11) { animation-delay: .42s; }
+
+    .step-card {
+        background: var(--card);
+        border: 1px solid var(--line);
+        border-radius: var(--radius);
+        overflow: hidden;
+        transition: border-color .3s, background .3s, box-shadow .3s;
+    }
+
+    .step-card:hover { background: var(--card-hover); }
+
+    .step.open .step-card {
+        border-color: var(--line-strong);
+        box-shadow: 0 16px 48px rgba(0,0,0,.4);
+    }
+
+    .step.completed .step-card {
+        border-color: rgba(52,211,153,.28);
+        background: linear-gradient(135deg, rgba(52,211,153,.05), rgba(52,211,153,.015));
+    }
+
+    .step-head {
+        display: flex;
+        align-items: center;
+        gap: 16px;
+        padding: 18px 22px;
+        cursor: pointer;
+        user-select: none;
+    }
+
+    .step-index {
+        width: 38px;
+        height: 38px;
+        border-radius: 12px;
+        background: rgba(255,255,255,.05);
+        border: 1px solid var(--line-strong);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 14px;
+        font-weight: 800;
+        color: var(--text-soft);
+        flex-shrink: 0;
+        transition: all .3s;
+        font-variant-numeric: tabular-nums;
+    }
+
+    .step.completed .step-index {
+        background: var(--green-dim);
+        border-color: rgba(52,211,153,.4);
+        color: var(--green);
+    }
+
+    .step-title-group { flex: 1; min-width: 0; }
+
+    .step-title {
+        font-size: 14.5px;
+        font-weight: 700;
+        letter-spacing: -.1px;
+    }
+
+    .step-sub {
+        font-size: 12px;
+        color: var(--muted);
+        margin-top: 3px;
+        line-height: 1.4;
+    }
+
+    .step-meter {
+        font-size: 11px;
+        font-weight: 700;
+        color: var(--muted);
+        background: rgba(255,255,255,.05);
+        border: 1px solid var(--line);
+        padding: 5px 12px;
+        border-radius: 999px;
+        white-space: nowrap;
+        font-variant-numeric: tabular-nums;
+        transition: all .3s;
+    }
+
+    .step.completed .step-meter {
+        background: var(--green-dim);
+        border-color: rgba(52,211,153,.35);
+        color: var(--green);
+    }
+
+    .chev {
+        width: 9px;
+        height: 9px;
+        border-right: 2px solid var(--muted);
+        border-bottom: 2px solid var(--muted);
+        transform: rotate(45deg);
+        transition: transform .3s;
+        flex-shrink: 0;
+        margin-top: -4px;
+    }
+
+    .step.open .chev { transform: rotate(225deg); margin-top: 4px; }
+
+    .step-body {
+        display: grid;
+        grid-template-rows: 0fr;
+        transition: grid-template-rows .35s cubic-bezier(.22,1,.36,1);
+    }
+
+    .step.open .step-body { grid-template-rows: 1fr; }
+
+    .step-body-inner {
+        overflow: hidden;
+        padding: 0 22px;
+    }
+
+    .step.open .step-body-inner { padding-bottom: 20px; }
+
+    .divider {
+        height: 1px;
+        background: var(--line);
+        margin-bottom: 6px;
+    }
+
+    /* ===== Checklist ===== */
+    .check-list { list-style: none; }
+
+    .check-item {
+        display: flex;
+        align-items: flex-start;
+        gap: 13px;
+        padding: 11px 12px;
+        border-radius: 12px;
+        cursor: pointer;
+        transition: background .15s;
+    }
+
+    .check-item:hover { background: rgba(255,255,255,.04); }
+
+    .check-item input {
+        appearance: none;
+        width: 21px;
+        height: 21px;
+        border: 2px solid rgba(255,255,255,.22);
+        border-radius: 7px;
+        cursor: pointer;
+        flex-shrink: 0;
+        margin-top: 1px;
+        position: relative;
+        transition: all .2s;
+        background: transparent;
+    }
+
+    .check-item input:hover { border-color: var(--dhl-yellow); }
+
+    .check-item input:checked {
+        background: var(--green);
+        border-color: var(--green);
+        box-shadow: 0 0 14px rgba(52,211,153,.35);
+    }
+
+    .check-item input:checked::after {
+        content: "";
+        position: absolute;
+        left: 5.5px;
+        top: 2px;
+        width: 5px;
+        height: 10px;
+        border-right: 2.5px solid #052e1f;
+        border-bottom: 2.5px solid #052e1f;
+        transform: rotate(45deg);
+    }
+
+    .check-text {
+        font-size: 13.5px;
+        line-height: 1.5;
+        color: var(--text-soft);
+        transition: color .2s;
+    }
+
+    .check-item input:checked ~ .check-text {
+        color: var(--muted);
+        text-decoration: line-through;
+        text-decoration-color: rgba(107,112,136,.5);
+    }
+
+    .check-text small {
+        display: block;
+        font-size: 11.5px;
+        color: var(--muted);
+        margin-top: 3px;
+        text-decoration: none !important;
+        line-height: 1.5;
+    }
+
+    .check-links {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 6px;
+        margin-top: 7px;
+    }
+
+    .check-link {
+        display: inline-flex;
+        align-items: center;
+        gap: 5px;
+        font-size: 10.5px;
+        font-weight: 700;
+        letter-spacing: .3px;
+        color: var(--dhl-yellow);
+        background: rgba(255,204,0,.08);
+        border: 1px solid rgba(255,204,0,.25);
+        border-radius: 999px;
+        padding: 4px 11px;
+        text-decoration: none !important;
+        transition: all .2s;
+        white-space: nowrap;
+    }
+
+    .check-link::after {
+        content: "↗";
+        font-size: 10px;
+        opacity: .7;
+    }
+
+    .check-link:hover {
+        background: rgba(255,204,0,.16);
+        border-color: rgba(255,204,0,.5);
+        box-shadow: 0 0 14px rgba(255,204,0,.15);
+    }
+
+    /* ===== Interview panel ===== */
+    .iv-panel { margin: 8px 0 18px; background: rgba(255,204,0,.025); border: 1px solid rgba(255,204,0,.15); border-radius: 16px; overflow: hidden; }
+
+    .iv-tabs { display: flex; border-bottom: 1px solid rgba(255,204,0,.1); overflow-x: auto; scrollbar-width: none; }
+    .iv-tabs::-webkit-scrollbar { display: none; }
+
+    .iv-tab { flex-shrink: 0; padding: 12px 15px; font-size: 11px; font-weight: 700; font-family: inherit; cursor: pointer; background: none; border: none; color: var(--muted); letter-spacing: .3px; transition: color .2s, background .2s; position: relative; white-space: nowrap; }
+    .iv-tab:hover { color: var(--text-soft); background: rgba(255,255,255,.03); }
+    .iv-tab.active { color: var(--dhl-yellow); background: rgba(255,204,0,.05); }
+    .iv-tab.active::after { content: ""; position: absolute; bottom: 0; left: 0; right: 0; height: 2px; background: var(--dhl-yellow); }
+
+    .iv-badge { display: inline-block; font-size: 9px; font-weight: 800; padding: 2px 5px; border-radius: 999px; margin-left: 5px; background: rgba(255,255,255,.07); color: var(--muted); vertical-align: middle; }
+    .iv-tab.active .iv-badge { background: rgba(255,204,0,.15); color: var(--dhl-yellow); }
+    .iv-badge.red { background: rgba(255,59,48,.15); color: #ff9e98; }
+
+    .iv-body { padding: 18px 20px 20px; }
+
+    .iv-sec { display: none; }
+    .iv-sec.active { display: block; }
+
+    .iv-h { font-size: 10px; text-transform: uppercase; letter-spacing: 1.5px; font-weight: 800; color: var(--dhl-yellow); margin-bottom: 3px; }
+    .iv-sub { font-size: 11.5px; color: var(--muted); margin-bottom: 13px; line-height: 1.5; }
+    .iv-sep { font-size: 10px; text-transform: uppercase; letter-spacing: 1.3px; font-weight: 800; color: var(--muted); margin: 18px 0 10px; padding-bottom: 7px; border-bottom: 1px solid var(--line); }
+
+    .iv-checks { list-style: none; }
+    .iv-check { display: flex; align-items: flex-start; gap: 10px; padding: 8px 10px; border-radius: 10px; cursor: pointer; transition: background .15s; font-size: 12.5px; color: var(--text-soft); line-height: 1.45; }
+    .iv-check:hover { background: rgba(255,255,255,.04); }
+    .iv-check input[type="checkbox"] { appearance: none; width: 18px; height: 18px; border: 2px solid rgba(255,255,255,.2); border-radius: 6px; cursor: pointer; flex-shrink: 0; margin-top: 1px; position: relative; transition: all .2s; background: transparent; }
+    .iv-check input:hover { border-color: var(--dhl-yellow); }
+    .iv-check input:checked { background: var(--green); border-color: var(--green); box-shadow: 0 0 10px rgba(52,211,153,.28); }
+    .iv-check input:checked::after { content: ""; position: absolute; left: 4px; top: 1.5px; width: 5px; height: 9px; border-right: 2px solid #052e1f; border-bottom: 2px solid #052e1f; transform: rotate(45deg); }
+
+    .score-row { display: flex; align-items: center; gap: 12px; padding: 10px 0; border-bottom: 1px solid var(--line); }
+    .score-row:last-of-type { border-bottom: none; }
+    .score-label-col { flex: 1; min-width: 0; }
+    .score-lbl { font-size: 12.5px; font-weight: 600; color: var(--text-soft); }
+    .score-def { font-size: 10.5px; color: var(--muted); margin-top: 2px; line-height: 1.4; min-height: 14px; }
+    .score-btns { display: flex; gap: 4px; flex-shrink: 0; }
+    .score-btn { width: 30px; height: 30px; border: 1px solid var(--line); border-radius: 8px; background: rgba(255,255,255,.04); color: var(--muted); font-size: 12px; font-weight: 700; cursor: pointer; font-family: inherit; transition: all .15s; flex-shrink: 0; }
+    .score-btn:hover { background: rgba(255,255,255,.09); color: var(--text-soft); border-color: var(--line-strong); }
+    .score-btn.sel.s1, .score-btn.sel.s2 { background: var(--red-dim); border-color: rgba(255,59,48,.4); color: #ff9e98; }
+    .score-btn.sel.s3 { background: var(--amber-dim); border-color: rgba(251,191,36,.4); color: var(--amber); }
+    .score-btn.sel.s4, .score-btn.sel.s5 { background: var(--green-dim); border-color: rgba(52,211,153,.4); color: var(--green); }
+    .score-cur { font-size: 12px; font-weight: 800; font-variant-numeric: tabular-nums; color: var(--muted); min-width: 30px; text-align: right; flex-shrink: 0; }
+
+    .iv-total-row { display: flex; align-items: center; justify-content: space-between; padding: 14px 0 10px; border-top: 1px solid var(--line-strong); margin-top: 4px; }
+    .iv-total-lbl { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 1.2px; color: var(--muted); }
+    .iv-total-val { font-size: 24px; font-weight: 900; font-variant-numeric: tabular-nums; letter-spacing: -1px; color: var(--text); font-family: 'Archivo Expanded', 'Archivo', sans-serif; }
+
+    .iv-dec { padding: 11px 16px; border-radius: 12px; font-size: 12.5px; font-weight: 800; letter-spacing: .2px; text-align: center; }
+    .iv-dec.dec-none { background: rgba(255,255,255,.05); border: 1px solid var(--line); color: var(--muted); }
+    .iv-dec.dec-hire { background: var(--green-dim); border: 1px solid rgba(52,211,153,.35); color: var(--green); }
+    .iv-dec.dec-cond { background: var(--amber-dim); border: 1px solid rgba(251,191,36,.35); color: var(--amber); }
+    .iv-dec.dec-second { background: rgba(255,204,0,.08); border: 1px solid rgba(255,204,0,.25); color: var(--dhl-yellow); }
+    .iv-dec.dec-decline { background: var(--red-dim); border: 1px solid rgba(255,59,48,.35); color: #ff9e98; }
+
+    .iv-thresholds { display: grid; grid-template-columns: 1fr 1fr; gap: 7px; margin-bottom: 14px; }
+    .iv-thresh { padding: 10px 12px; border-radius: 10px; font-size: 11px; line-height: 1.4; }
+    .iv-thresh b { display: block; font-size: 15px; font-weight: 900; margin-bottom: 1px; }
+    .iv-thresh.dec-hire { background: var(--green-dim); border: 1px solid rgba(52,211,153,.22); color: var(--green); }
+    .iv-thresh.dec-cond { background: var(--amber-dim); border: 1px solid rgba(251,191,36,.22); color: var(--amber); }
+    .iv-thresh.dec-second { background: rgba(255,204,0,.06); border: 1px solid rgba(255,204,0,.18); color: var(--dhl-yellow); }
+    .iv-thresh.dec-decline { background: var(--red-dim); border: 1px solid rgba(255,59,48,.18); color: #ff9e98; }
+
+    .iv-info { margin-top: 12px; padding: 12px 14px; background: rgba(255,255,255,.03); border: 1px solid var(--line); border-radius: 12px; font-size: 12px; color: var(--muted); line-height: 1.65; }
+    .iv-info strong { display: block; font-size: 10px; text-transform: uppercase; letter-spacing: 1.3px; color: var(--text-soft); font-weight: 800; margin-bottom: 5px; }
+
+    .hint {
+        font-size: 12px;
+        color: var(--muted);
+        line-height: 1.7;
+        margin-top: 12px;
+        padding: 13px 16px;
+        background: rgba(255,255,255,.03);
+        border: 1px solid var(--line);
+        border-radius: 12px;
+    }
+
+    .warn {
+        font-size: 12.5px;
+        line-height: 1.65;
+        margin-top: 12px;
+        padding: 14px 16px;
+        background: var(--red-dim);
+        border: 1px solid rgba(255,59,48,.25);
+        border-radius: 12px;
+        color: #ff9e98;
+    }
+
+    .warn strong {
+        display: block;
+        margin-bottom: 4px;
+        font-size: 10.5px;
+        text-transform: uppercase;
+        letter-spacing: 1.4px;
+        color: var(--dhl-red);
+        font-weight: 800;
+    }
+
+    /* ===== Buttons ===== */
+    .btn {
+        border: none;
+        border-radius: 12px;
+        padding: 11px 20px;
+        font-size: 12.5px;
+        font-weight: 700;
+        cursor: pointer;
+        font-family: inherit;
+        letter-spacing: .2px;
+        transition: all .2s;
+        white-space: nowrap;
+    }
+
+    .btn-ghost {
+        background: transparent;
+        color: var(--text-soft);
+        border: 1px solid var(--line-strong);
+    }
+
+    .btn-ghost:hover {
+        color: var(--text);
+        border-color: rgba(255,255,255,.3);
+        background: rgba(255,255,255,.04);
+    }
+
+    .btn-main {
+        background: var(--dhl-yellow);
+        color: #1a1500;
+        box-shadow: 0 4px 20px rgba(255,204,0,.25);
+    }
+
+    .btn-main:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 8px 28px rgba(255,204,0,.4);
+    }
+
+    .btn-approve {
+        background: var(--green-dim);
+        border: 1px solid rgba(52,211,153,.4);
+        color: var(--green);
+    }
+
+    .btn-approve:hover {
+        background: rgba(52,211,153,.22);
+        box-shadow: 0 4px 18px rgba(52,211,153,.2);
+    }
+
+    .btn-reject {
+        background: var(--red-dim);
+        border: 1px solid rgba(255,59,48,.35);
+        color: #ff9e98;
+    }
+
+    .btn-reject:hover {
+        background: rgba(255,59,48,.2);
+        box-shadow: 0 4px 18px rgba(255,59,48,.18);
+    }
+
+    .btn-danger-ghost {
+        background: transparent;
+        border: 1px solid var(--line);
+        color: var(--muted);
+    }
+
+    .btn-danger-ghost:hover {
+        border-color: rgba(255,59,48,.4);
+        color: #ff9e98;
+    }
+
+    /* ===== Footer actions ===== */
+    .actions {
+        position: fixed;
+        bottom: 0;
+        left: 0;
+        right: 0;
+        background: rgba(11,13,20,.8);
+        backdrop-filter: blur(20px) saturate(1.4);
+        -webkit-backdrop-filter: blur(20px) saturate(1.4);
+        border-top: 1px solid var(--line);
+        padding: 14px 24px;
+        z-index: 90;
+    }
+
+    .actions-inner {
+        max-width: 980px;
+        margin: 0 auto;
+        display: flex;
+        gap: 10px;
+        justify-content: flex-end;
+    }
+
+    /* ===== Modal ===== */
+    .modal-backdrop {
+        position: fixed;
+        inset: 0;
+        background: rgba(5,6,10,.7);
+        backdrop-filter: blur(8px);
+        -webkit-backdrop-filter: blur(8px);
+        z-index: 300;
+        display: none;
+        align-items: flex-start;
+        justify-content: center;
+        padding: 60px 20px 40px;
+        overflow-y: auto;
+    }
+
+    .modal-backdrop.show { display: flex; }
+
+    .modal {
+        width: 100%;
+        max-width: 520px;
+        background: var(--bg-soft);
+        border: 1px solid var(--line-strong);
+        border-radius: 22px;
+        padding: 28px;
+        box-shadow: 0 40px 120px rgba(0,0,0,.6);
+        animation: modalIn .35s cubic-bezier(.22,1,.36,1) both;
+        position: relative;
+        overflow: hidden;
+    }
+
+    .modal::before {
+        content: "";
+        position: absolute;
+        top: 0; left: 0; right: 0;
+        height: 3px;
+        background: repeating-linear-gradient(135deg,
+            var(--dhl-yellow) 0 14px, transparent 14px 28px);
+        opacity: .6;
+    }
+
+    @keyframes modalIn {
+        from { opacity: 0; transform: translateY(20px) scale(.97); }
+        to { opacity: 1; transform: translateY(0) scale(1); }
+    }
+
+    .modal h2 {
+        font-size: 17px;
+        font-weight: 900;
+        letter-spacing: -.3px;
+        font-family: 'Archivo Expanded', 'Archivo', sans-serif;
+    }
+
+    .modal .modal-sub {
+        font-size: 12px;
+        color: var(--muted);
+        margin-top: 5px;
+        margin-bottom: 22px;
+        line-height: 1.5;
+    }
+
+    .form-grid {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 14px;
+    }
+
+    .field { display: flex; flex-direction: column; gap: 6px; }
+
+    .field.full { grid-column: 1 / -1; }
+
+    .field label {
+        font-size: 10px;
+        text-transform: uppercase;
+        letter-spacing: 1.3px;
+        font-weight: 700;
+        color: var(--muted);
+    }
+
+    .field label .req { color: var(--dhl-yellow); }
+
+    .field input, .field select, .field textarea {
+        background: var(--card);
+        border: 1px solid var(--line);
+        border-radius: 11px;
+        padding: 11px 13px;
+        color: var(--text);
+        font-family: inherit;
+        font-size: 13px;
+        outline: none;
+        transition: border-color .2s, background .2s;
+        width: 100%;
+    }
+
+    .field select { appearance: none; cursor: pointer; }
+
+    .field textarea { resize: vertical; min-height: 80px; line-height: 1.6; }
+
+    .field input:focus, .field select:focus, .field textarea:focus {
+        border-color: rgba(255,204,0,.5);
+        background: var(--card-hover);
+    }
+
+    .field input.invalid { border-color: rgba(255,59,48,.55); }
+
+    .field select option { background: var(--bg-soft); color: var(--text); }
+
+    .field input[type="date"]::-webkit-calendar-picker-indicator {
+        filter: invert(.6);
+        cursor: pointer;
+    }
+
+    .modal-actions {
+        display: flex;
+        gap: 10px;
+        justify-content: flex-end;
+        margin-top: 24px;
+    }
+
+    @media (max-width: 720px) {
+        .summary-grid { grid-template-columns: repeat(2, 1fr); }
+        .top-stats { width: 100%; justify-content: space-between; }
+        .step-sub { display: none; }
+        .actions-inner { justify-content: stretch; }
+        .actions .btn { flex: 1; }
+        .form-grid { grid-template-columns: 1fr; }
+        .case-decision { margin-left: 0; width: 100%; }
+        .case-decision .btn { flex: 1; }
+    }
+</style>
+</head>
+<body>
+
+<header class="topbar">
+    <div class="topbar-inner">
+        <div class="topbar-row">
+            <div class="brand" onclick="showDashboard()" title="Back to dashboard">
+                <div class="brand-badge">DHL</div>
+                <h1 id="brandTitle">Driver Vetting — Vendor Tracker
+                    <span>BA Express · Compliance · SOP v1.0</span>
+                </h1>
+            </div>
+            <div class="top-stats" id="topStats"></div>
+        </div>
+        <div class="progress-track">
+            <div class="progress-fill" id="progressFill"></div>
+        </div>
+    </div>
+</header>
+
+<main class="wrap">
+
+    <!-- ============ DASHBOARD VIEW ============ -->
+    <section class="view" id="dashboardView">
+
+        <div class="summary-grid" id="summaryGrid">
+            <div class="summary-card c-all" data-filter="all" onclick="setFilter('all')">
+                <div class="big" id="cntAll">0</div>
+                <div class="cap">All vendors</div>
+            </div>
+            <div class="summary-card c-active" data-filter="active" onclick="setFilter('active')">
+                <div class="big" id="cntActive">0</div>
+                <div class="cap">In progress</div>
+            </div>
+            <div class="summary-card c-approved" data-filter="approved" onclick="setFilter('approved')">
+                <div class="big" id="cntApproved">0</div>
+                <div class="cap">Approved</div>
+            </div>
+            <div class="summary-card c-rejected" data-filter="rejected" onclick="setFilter('rejected')">
+                <div class="big" id="cntRejected">0</div>
+                <div class="cap">Rejected</div>
+            </div>
+        </div>
+
+        <div class="toolbar">
+            <div class="search-box">
+                <svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><line x1="16.5" y1="16.5" x2="21" y2="21"/></svg>
+                <input type="text" id="searchInput" placeholder="Search vendor by name, depot or role…" oninput="renderDashboard()">
+            </div>
+            <button class="btn btn-main" onclick="openModal()">+ New vendor</button>
+        </div>
+
+        <div class="vendor-list" id="vendorList"></div>
+
+    </section>
+
+    <!-- ============ CASE VIEW ============ -->
+    <section class="view" id="caseView">
+
+        <button class="back-link" onclick="showDashboard()">← Back to vendors</button>
+
+        <div class="case-header">
+            <div class="case-header-row">
+                <div>
+                    <div class="case-name" id="caseName"></div>
+                    <div class="case-meta" id="caseMeta"></div>
+                </div>
+                <div class="case-decision" id="caseDecision"></div>
+            </div>
+            <div class="decision-banner" id="decisionBanner"></div>
+        </div>
+
+        <div class="golden-rule">
+            <div class="icon">⚖️</div>
+            <div>
+                <strong>Golden Rule</strong>
+                <p>No driver may start on the DHL contract until full vetting is completed, originals are checked, and DHL has confirmed the case is acceptable. <em>"Sent to DHL" does not mean "approved by DHL."</em></p>
+            </div>
+        </div>
+
+        <div id="timeline"></div>
+
+    </section>
+</main>
+
+<footer class="actions" id="caseActions" style="display:none">
+    <div class="actions-inner">
+        <button class="btn btn-danger-ghost" onclick="deleteVendor()">🗑 Delete case</button>
+        <button class="btn btn-ghost" onclick="resetCase()">↺ Reset checklist</button>
+        <button class="btn btn-ghost" onclick="expandAll()">Expand all</button>
+        <button class="btn btn-main" onclick="exportReport()">↓ Export report</button>
+    </div>
+</footer>
+
+<!-- ============ NEW VENDOR MODAL ============ -->
+<div class="modal-backdrop" id="modalBackdrop" onclick="if(event.target===this) closeModal()">
+    <div class="modal">
+        <h2>Open a Vetting Case</h2>
+        <div class="modal-sub">Register the vendor / driver who is starting the vetting process. One case per driver — initial status: <b>In progress</b>.</div>
+        <div class="form-grid">
+            <div class="field full">
+                <label>Full name <span class="req">*</span></label>
+                <input type="text" id="fName" placeholder="e.g. John Smith" autocomplete="off">
+            </div>
+            <div class="field">
+                <label>Service centre / depot</label>
+                <input type="text" id="fDepot" placeholder="e.g. Birmingham SC" autocomplete="off">
+            </div>
+            <div class="field">
+                <label>Proposed role</label>
+                <select id="fRole">
+                    <option>Driver</option>
+                    <option>Courier</option>
+                    <option>Van Driver</option>
+                    <option>HGV Driver</option>
+                    <option>Other</option>
+                </select>
+            </div>
+            <div class="field">
+                <label>Proposed start date</label>
+                <input type="date" id="fStart">
+            </div>
+            <div class="field">
+                <label>Employment status</label>
+                <select id="fEmployment">
+                    <option>PAYE</option>
+                    <option>Self-employed</option>
+                    <option>Ltd company</option>
+                    <option>Partnership</option>
+                </select>
+            </div>
+            <div class="field">
+                <label>Nationality</label>
+                <input type="text" id="fNationality" placeholder="e.g. British" autocomplete="off">
+            </div>
+            <div class="field">
+                <label>Case owner</label>
+                <input type="text" id="fOwner" placeholder="Admin responsible" autocomplete="off">
+            </div>
+        </div>
+        <div class="modal-actions">
+            <button class="btn btn-ghost" onclick="closeModal()">Cancel</button>
+            <button class="btn btn-main" onclick="addVendor()">＋ Add vendor</button>
+        </div>
+    </div>
+</div>
+
+<script>
+/* =====================================================
+   Data — the 10-step SOP checklist (shared by all cases)
+===================================================== */
+const STEPS = [
+    {
+        title: 'Open a Vetting Case',
+        sub: 'One case per driver · initial status: Draft',
+        items: [
+            { t: 'Full name recorded' },
+            { t: 'Service centre / depot' },
+            { t: 'Proposed role (Driver, Courier…)' },
+            { t: 'Proposed start date' },
+            { t: 'Employment status (PAYE / self-employed / Ltd / partnership)' },
+            { t: 'Nationality' },
+            { t: 'Case owner name' },
+            { t: 'Date case opened' }
+        ]
+    },
+    {
+        title: 'Collect Core Evidence',
+        sub: 'Use the Driver Document Request Checklist (Appendix A)',
+        items: [
+            { t: 'Identity — original passport or acceptable photo ID', s: 'Original required; verify in person before DHL handoff' },
+            { t: 'Right to Work — passport, visa, share code, BRP', s: 'Check expiry; if time-limited, record visa expiry date and set a reminder',
+              links: [{ label: 'RTW Share Code Check', url: 'https://www.gov.uk/view-right-to-work' }] },
+            { t: 'Sanctions / Denied Parties — dated check result', s: 'Retain the evidence of the check, not just the result',
+              links: [{ label: 'Sanctions Search (OFAC)', url: 'https://sanctionssearch.ofac.treas.gov' }] },
+            { t: 'Full UK or valid foreign driving licence', s: 'If foreign, check UK residency rules for licence validity' },
+            { t: 'DVLA check — code result or share result', s: 'Check points, bans, disqualifications; record the check date',
+              links: [{ label: 'DVLA Driving Check', url: 'https://www.gov.uk/check-driving-information' }] },
+            { t: 'UK CRC — original hard-copy basic DBS or Disclosure Scotland', s: 'Electronic/online copies not acceptable where hard copy is required',
+              links: [
+                  { label: 'Criminal Record (England/Wales)', url: 'https://www.gov.uk/request-copy-criminal-record' },
+                  { label: 'Disclosure (Scotland)', url: 'https://www.mygov.scot/apply-for-level-1-disclosure' }
+              ] },
+            { t: 'International CRC — if 6+ months abroad in last 5 years', s: 'One per country; if unobtainable, document why and escalate to DHL' },
+            { t: 'Proof of current address', s: 'Must match the address given by the driver' },
+            { t: '5-year history, month by month', s: 'No unexplained gaps over 28 days' },
+            { t: 'Written references covering the full 5 years', s: 'Verbal not accepted; must come from the employer/agency' },
+            { t: 'HMRC evidence (SA302, UTR) if not PAYE' },
+            { t: 'APHIDS / ACCS as required for your depot',
+              links: [{ label: 'APHIDS Application', url: 'https://cargo.aphids-application.homeoffice.gov.uk' }] }
+        ]
+    },
+    {
+        title: 'Face-to-Face Interview',
+        sub: 'Conducted in person by the recruiting manager · record date, outcome and notes',
+        interview: true,
+        items: [
+            { t: 'Interview scheduled and conducted face to face', s: 'In person at the depot — not by phone or video call' },
+            { t: 'Identity confirmed against original photo ID at the interview' },
+            { t: 'Original documents sighted and cross-checked with the driver' },
+            { t: '5-year history reviewed verbally — matches the documents' },
+            { t: 'Gaps or inconsistencies challenged and explanations recorded' },
+            { t: 'Driving experience and licence categories discussed' },
+            { t: 'Abilities and aptitudes assessed for the proposed role' },
+            { t: 'Communication / English adequate for the role' },
+            { t: 'Motivation, conduct and demeanour assessed' },
+            { t: 'Interview notes written up and filed in the case' },
+            { t: 'Suitability declaration signed by the recruiting manager' }
+        ],
+        hint: '💡 The interview is part of the evidence pack. Notes must be written, dated and signed — a verbal impression is not evidence.'
+    },
+    {
+        title: 'Check Red Flags',
+        sub: 'If any flag is unresolved, the case is NOT ready for DHL',
+        items: [
+            { t: 'No unexplained gap of 28+ days in the 5-year history' },
+            { t: 'Time abroad verified (6+ months → international CRC)' },
+            { t: 'CRC from the correct source and in hard copy' },
+            { t: 'CRC recent enough for the proposed start date' },
+            { t: 'No visa expiry or work restriction issues' },
+            { t: 'Foreign licence with no UK residency conflict' },
+            { t: 'HMRC evidence present for non-PAYE workers' },
+            { t: 'References written and from the correct source' },
+            { t: 'Names, addresses and dates consistent across documents' },
+            { t: 'Interview notes and suitability declaration on file' }
+        ],
+        warn: { title: '⛔ Stop', text: 'If any red flag is present, stop and resolve it before proceeding. Do not present the case to DHL.' }
+    },
+    {
+        title: 'Build the 5-Year Timeline',
+        sub: 'Month by month, no gaps over 28 days',
+        items: [
+            { t: 'All periods mapped (employment, education, self-employment, unemployment, travel)' },
+            { t: 'Country of residence recorded for every period' },
+            { t: 'Gaps of 28+ days backed by documentary evidence', s: 'Benefit letters, travel records, tenancy agreements, signed declarations with supporting documents' },
+            { t: 'No gap relying on a verbal explanation only', s: 'A verbal explanation is not evidence — if it cannot be documented, it is a gap' }
+        ]
+    },
+    {
+        title: 'Review Evidence Quality',
+        sub: 'If any answer is "no", stop and request better evidence',
+        items: [
+            { t: 'Originals available where required (not just photocopies)' },
+            { t: 'CRC from the correct official source and in hard copy' },
+            { t: 'CRC recent enough for the proposed start date' },
+            { t: 'References written, signed, and from the correct source' },
+            { t: 'Dates consistent across all documents' },
+            { t: 'Driver legally entitled to drive in the UK' },
+            { t: '5-year timeline complete with no gaps over 28 days' },
+            { t: 'Interview documented and suitability declaration signed' },
+            { t: 'HMRC evidence on file (if non-PAYE)' }
+        ]
+    },
+    {
+        title: 'Compliance Triage',
+        sub: 'AI-assisted or manual review using the Case Input Template (Appendix B)',
+        items: [
+            { t: 'Compliance check result per evidence area' },
+            { t: 'List of missing or weak items' },
+            { t: 'Risk level assigned (Low / Medium / High)' },
+            { t: 'Start decision (Yes / No / Not yet / Only with documented DHL exception)' },
+            { t: 'Next actions with owners and deadlines' },
+            { t: 'Draft communication prepared (driver or DHL) if needed' }
+        ],
+        hint: '💡 The AI assistant is a reviewing and drafting aid, not the final approver. Evidence decides. DHL confirms.'
+    },
+    {
+        title: 'Present Originals to DHL',
+        sub: 'Ops/Depot Manager presents in person to the DHL Service Centre Manager',
+        items: [
+            { t: 'DHL Express Vetting Review Form prepared with all supporting evidence' },
+            { t: 'APHIDS submission confirmation included in the pack' },
+            { t: 'Original documents presented in person to DHL' }
+        ]
+    },
+    {
+        title: 'DHL Review',
+        sub: 'DHL Service Centre Manager reviews the complete pack',
+        items: [
+            { t: 'Complete pack submitted to DHL for review' },
+            { t: 'Submission date recorded in the case file' }
+        ],
+        warn: { title: '⏳ Pending ≠ Approved', text: "A pending case is not cleared. Wait for DHL's formal confirmation." }
+    },
+    {
+        title: 'DHL Acceptance Confirmed',
+        sub: 'Only after this confirmation may the driver start',
+        items: [
+            { t: 'Formal DHL acceptance received and filed' },
+            { t: 'Approval date recorded in the case file' }
+        ]
+    },
+    {
+        title: 'Release to Start & Ongoing Monitoring',
+        sub: 'Audit-ready file + renewal reminders',
+        items: [
+            { t: 'Start confirmed only after DHL approval' },
+            { t: 'Case file complete and audit-ready' },
+            { t: 'CRC renewal reminder set (2.5 years)', s: 'Internal rule: use 2.5 years as the safer standard unless DHL confirms otherwise in writing' },
+            { t: 'Visa expiry reminder set (if applicable)' }
+        ]
+    }
+];
+
+const TOTAL_ITEMS = STEPS.reduce((n, s) => n + s.items.length, 0);
+
+/* =====================================================
+   State
+===================================================== */
+const STORE_KEY = 'dhlVettingVendors_v1';
+
+let vendors = [];
+let currentId = null;          // vendor open in case view
+let filter = 'all';            // dashboard filter
+let openSteps = new Set([0]);  // expanded steps in case view
+let ivTab = 0;                 // active tab inside the interview panel
+
+function loadStore() {
+    try {
+        const data = JSON.parse(localStorage.getItem(STORE_KEY));
+        if (Array.isArray(data)) vendors = data;
+    } catch (e) {}
+    vendors.forEach(migrateVendor);
+}
+
+// v1 → v2: the two interview items left Step 2 (old indices 19–20) and the
+// Face-to-Face Interview step (11 items) was inserted after it.
+function migrateVendor(v) {
+    if (!v.ver || v.ver < 2) {
+        if (v.checks.length === 62) {
+            const moved = v.checks.splice(19, 2); // [interview notes, suitability declaration]
+            const ins = new Array(11).fill(false);
+            ins[9] = !!moved[0];
+            ins[10] = !!moved[1];
+            v.checks.splice(20, 0, ...ins);
+        }
+        v.ver = 2;
+    }
+    if (!v.interview) v.interview = {};
+    // expand interview object with defaults for any missing fields
+    const ivDef = {
+        date:'', interviewer:'', location:'', outcome:'', notes:'',
+        supervisorName:'', startTime:'',
+        prepChecks: Array(9).fill(false),
+        comp: { comm:0, cust:0, prob:0, time:0, rely:0, adap:0, tech:0 },
+        prac: { map:0, num:0, doc:0 },
+        docChecks: Array(12).fill(false),
+        docNotes:'',
+        redFlags: Array(14).fill(false),
+        strengths:'', development:'', candidateQuestions:'', overall:'',
+        decision:'', conditions:'',
+        nextSteps: Array(4).fill(false),
+        hrSig:'', supervisorSig:''
+    };
+    Object.keys(ivDef).forEach(k => {
+        if (v.interview[k] === undefined) v.interview[k] = ivDef[k];
+    });
+    if (!v.interview.comp) v.interview.comp = ivDef.comp;
+    else Object.keys(ivDef.comp).forEach(k => { if (v.interview.comp[k] === undefined) v.interview.comp[k] = 0; });
+    if (!v.interview.prac) v.interview.prac = ivDef.prac;
+    else Object.keys(ivDef.prac).forEach(k => { if (v.interview.prac[k] === undefined) v.interview.prac[k] = 0; });
+    while (v.checks.length < TOTAL_ITEMS) v.checks.push(false);
+}
+
+function saveStore() {
+    localStorage.setItem(STORE_KEY, JSON.stringify(vendors));
+}
+
+function getVendor(id) { return vendors.find(v => v.id === id); }
+
+function vendorProgress(v) {
+    const done = v.checks.filter(Boolean).length;
+    return { done, pct: Math.round(done / TOTAL_ITEMS * 100) };
+}
+
+function vendorDoneSteps(v) {
+    let n = 0, idx = 0;
+    STEPS.forEach(step => {
+        const slice = v.checks.slice(idx, idx + step.items.length);
+        if (slice.length && slice.every(Boolean)) n++;
+        idx += step.items.length;
+    });
+    return n;
+}
+
+function fmtDate(iso) {
+    if (!iso) return '—';
+    return new Date(iso).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' });
+}
+
+function esc(s) {
+    return String(s).replace(/[&<>"']/g, c =>
+        ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]);
+}
+
+/* =====================================================
+   Topbar
+===================================================== */
+function renderTopbar() {
+    const stats = document.getElementById('topStats');
+    const fill = document.getElementById('progressFill');
+
+    if (currentId) {
+        const v = getVendor(currentId);
+        if (!v) return;
+        const { done, pct } = vendorProgress(v);
+        const pillClass = v.status === 'approved' ? 'approved'
+            : v.status === 'rejected' ? 'rejected'
+            : pct === 100 ? 'done' : pct > 0 ? 'progress' : '';
+        const pillText = v.status === 'approved' ? '✓ Approved by DHL'
+            : v.status === 'rejected' ? '✕ Rejected'
+            : pct === 100 ? 'Ready for decision' : pct > 0 ? 'In progress' : 'Draft';
+        stats.innerHTML =
+            '<div class="stat"><div class="num">' + vendorDoneSteps(v) + '/' + STEPS.length + '</div><div class="lbl">Steps</div></div>' +
+            '<div class="stat"><div class="num">' + pct + '%</div><div class="lbl">Items</div></div>' +
+            '<div class="status-pill ' + pillClass + '">' + pillText + '</div>';
+        fill.style.width = pct + '%';
+    } else {
+        const active = vendors.filter(v => v.status === 'active').length;
+        const approved = vendors.filter(v => v.status === 'approved').length;
+        const rejected = vendors.filter(v => v.status === 'rejected').length;
+        const decided = approved + rejected;
+        const pct = vendors.length ? Math.round(decided / vendors.length * 100) : 0;
+        stats.innerHTML =
+            '<div class="stat"><div class="num">' + vendors.length + '</div><div class="lbl">Vendors</div></div>' +
+            '<div class="stat"><div class="num">' + active + '</div><div class="lbl">In progress</div></div>' +
+            '<div class="stat"><div class="num">' + approved + '</div><div class="lbl">Approved</div></div>' +
+            '<div class="stat"><div class="num">' + rejected + '</div><div class="lbl">Rejected</div></div>';
+        fill.style.width = pct + '%';
+    }
+}
+
+/* =====================================================
+   Dashboard
+===================================================== */
+function setFilter(f) {
+    filter = f;
+    renderDashboard();
+}
+
+function statusLabel(v) {
+    if (v.status === 'approved') return { cls: 'approved', txt: '✓ Approved' };
+    if (v.status === 'rejected') return { cls: 'rejected', txt: '✕ Rejected' };
+    const { pct } = vendorProgress(v);
+    if (pct === 100) return { cls: 'done', txt: 'Ready for decision' };
+    if (pct > 0) return { cls: 'progress', txt: 'In progress' };
+    return { cls: '', txt: 'Draft' };
+}
+
+function renderDashboard() {
+    document.getElementById('cntAll').textContent = vendors.length;
+    document.getElementById('cntActive').textContent = vendors.filter(v => v.status === 'active').length;
+    document.getElementById('cntApproved').textContent = vendors.filter(v => v.status === 'approved').length;
+    document.getElementById('cntRejected').textContent = vendors.filter(v => v.status === 'rejected').length;
+
+    document.querySelectorAll('.summary-card').forEach(c =>
+        c.classList.toggle('sel', c.dataset.filter === filter));
+
+    const q = document.getElementById('searchInput').value.trim().toLowerCase();
+    let list = vendors.slice().sort((a, b) => b.createdAt - a.createdAt);
+
+    if (filter !== 'all') list = list.filter(v => v.status === filter);
+    if (q) list = list.filter(v =>
+        (v.name + ' ' + (v.depot || '') + ' ' + (v.role || '')).toLowerCase().includes(q));
+
+    const box = document.getElementById('vendorList');
+
+    if (!list.length) {
+        const msgs = {
+            all: ['📋', 'No vendors yet', 'Click <b>+ New vendor</b> to open the first vetting case.'],
+            active: ['🚚', 'No vendors in progress', 'Cases being vetted will appear here.'],
+            approved: ['✅', 'No approved vendors yet', 'Vendors confirmed by DHL will appear here.'],
+            rejected: ['⛔', 'No rejected vendors', 'Cases declined by DHL or compliance will appear here.']
+        };
+        const m = q ? ['🔍', 'No results', 'No vendor matches "' + esc(q) + '".'] : msgs[filter];
+        box.innerHTML = '<div class="empty"><div class="glyph">' + m[0] + '</div><h3>' + m[1] + '</h3><p>' + m[2] + '</p></div>';
+        renderTopbar();
+        return;
+    }
+
+    box.innerHTML = list.map(v => {
+        const { done, pct } = vendorProgress(v);
+        const st = statusLabel(v);
+        const initials = v.name.trim().split(/\s+/).map(w => w[0]).slice(0, 2).join('').toUpperCase();
+        const meta = [
+            v.role ? '<b>' + esc(v.role) + '</b>' : '',
+            v.depot ? esc(v.depot) : '',
+            v.startDate ? 'starts ' + fmtDate(v.startDate) : '',
+            'opened ' + fmtDate(v.createdAt)
+        ].filter(Boolean).join(' · ');
+        return (
+            '<div class="vendor-card st-' + v.status + '" onclick="openCase(\'' + v.id + '\')">' +
+                '<div class="vendor-top">' +
+                    '<div class="avatar">' + esc(initials) + '</div>' +
+                    '<div class="vendor-name-group">' +
+                        '<div class="vendor-name">' + esc(v.name) + '</div>' +
+                        '<div class="vendor-meta">' + meta + '</div>' +
+                    '</div>' +
+                    '<div class="vendor-right">' +
+                        '<span class="mini-pct">' + pct + '%</span>' +
+                        '<span class="status-pill ' + st.cls + '">' + st.txt + '</span>' +
+                    '</div>' +
+                '</div>' +
+                '<div class="vendor-progress"><i style="width:' + pct + '%"></i></div>' +
+                '<div class="vendor-steps-lbl">' +
+                    '<span>' + vendorDoneSteps(v) + '/' + STEPS.length + ' steps · ' + done + '/' + TOTAL_ITEMS + ' items</span>' +
+                    '<span>' + (v.owner ? 'owner: ' + esc(v.owner) : '') + '</span>' +
+                '</div>' +
+            '</div>'
+        );
+    }).join('');
+
+    renderTopbar();
+}
+
+/* =====================================================
+   Modal — new vendor
+===================================================== */
+function openModal() {
+    document.getElementById('modalBackdrop').classList.add('show');
+    setTimeout(() => document.getElementById('fName').focus(), 60);
+}
+
+function closeModal() {
+    document.getElementById('modalBackdrop').classList.remove('show');
+    ['fName', 'fDepot', 'fNationality', 'fOwner'].forEach(id => {
+        const el = document.getElementById(id);
+        el.value = '';
+        el.classList.remove('invalid');
+    });
+    document.getElementById('fStart').value = '';
+    document.getElementById('fRole').selectedIndex = 0;
+    document.getElementById('fEmployment').selectedIndex = 0;
+}
+
+function addVendor() {
+    const nameEl = document.getElementById('fName');
+    const name = nameEl.value.trim();
+    if (!name) {
+        nameEl.classList.add('invalid');
+        nameEl.focus();
+        return;
+    }
+
+    const v = {
+        id: 'v' + Date.now() + Math.random().toString(36).slice(2, 7),
+        name,
+        depot: document.getElementById('fDepot').value.trim(),
+        role: document.getElementById('fRole').value,
+        startDate: document.getElementById('fStart').value || null,
+        employment: document.getElementById('fEmployment').value,
+        nationality: document.getElementById('fNationality').value.trim(),
+        owner: document.getElementById('fOwner').value.trim(),
+        createdAt: Date.now(),
+        status: 'active',          // active | approved | rejected
+        decisionAt: null,
+        ver: 2,
+        interview: {
+            date:'', interviewer:'', location:'', outcome:'', notes:'',
+            supervisorName:'', startTime:'',
+            prepChecks: Array(9).fill(false),
+            comp: { comm:0, cust:0, prob:0, time:0, rely:0, adap:0, tech:0 },
+            prac: { map:0, num:0, doc:0 },
+            docChecks: Array(12).fill(false),
+            docNotes:'',
+            redFlags: Array(14).fill(false),
+            strengths:'', development:'', candidateQuestions:'', overall:'',
+            decision:'', conditions:'',
+            nextSteps: Array(4).fill(false),
+            hrSig:'', supervisorSig:''
+        },
+        checks: new Array(TOTAL_ITEMS).fill(false)
+    };
+
+    // The case form itself satisfies most of Step 1 — pre-tick what was provided.
+    const step1 = [true, !!v.depot, !!v.role, !!v.startDate, !!v.employment, !!v.nationality, !!v.owner, true];
+    step1.forEach((val, i) => v.checks[i] = val);
+
+    vendors.push(v);
+    saveStore();
+    closeModal();
+    openCase(v.id);
+}
+
+/* =====================================================
+   Case view
+===================================================== */
+function openCase(id) {
+    currentId = id;
+    openSteps = new Set();
+
+    // open the first incomplete step
+    const v = getVendor(id);
+    let idx = 0, opened = false;
+    STEPS.forEach((step, si) => {
+        const slice = v.checks.slice(idx, idx + step.items.length);
+        if (!opened && !slice.every(Boolean)) { openSteps.add(si); opened = true; }
+        idx += step.items.length;
+    });
+    if (!opened) openSteps.add(0);
+
+    document.getElementById('dashboardView').classList.remove('active');
+    document.getElementById('caseView').classList.add('active');
+    document.getElementById('caseActions').style.display = '';
+    renderCase();
+    window.scrollTo({ top: 0 });
+}
+
+function showDashboard() {
+    currentId = null;
+    document.getElementById('caseView').classList.remove('active');
+    document.getElementById('caseActions').style.display = 'none';
+    document.getElementById('dashboardView').classList.add('active');
+    renderDashboard();
+    window.scrollTo({ top: 0 });
+}
+
+function renderCase() {
+    const v = getVendor(currentId);
+    if (!v) { showDashboard(); return; }
+
+    document.getElementById('caseName').textContent = v.name;
+    document.getElementById('caseMeta').innerHTML = [
+        v.role ? 'Role: <b>' + esc(v.role) + '</b>' : '',
+        v.depot ? 'Depot: <b>' + esc(v.depot) + '</b>' : '',
+        v.employment ? 'Status: <b>' + esc(v.employment) + '</b>' : '',
+        v.nationality ? 'Nationality: <b>' + esc(v.nationality) + '</b>' : '',
+        v.startDate ? 'Proposed start: <b>' + fmtDate(v.startDate) + '</b>' : '',
+        v.owner ? 'Case owner: <b>' + esc(v.owner) + '</b>' : '',
+        'Opened: <b>' + fmtDate(v.createdAt) + '</b>'
+    ].filter(Boolean).join(' · ');
+
+    // decision buttons + banner
+    const dec = document.getElementById('caseDecision');
+    const banner = document.getElementById('decisionBanner');
+    banner.className = 'decision-banner';
+
+    if (v.status === 'active') {
+        dec.innerHTML =
+            '<button class="btn btn-approve" onclick="decide(\'approved\')">✓ Mark approved</button>' +
+            '<button class="btn btn-reject" onclick="decide(\'rejected\')">✕ Mark rejected</button>';
+    } else {
+        dec.innerHTML = '<button class="btn btn-ghost" onclick="reopenCase()">↺ Reopen case</button>';
+        if (v.status === 'approved') {
+            banner.classList.add('show', 'ok');
+            banner.innerHTML = '<b>✓ Approved by DHL</b> on ' + fmtDate(v.decisionAt) + '. The driver may start. Keep the file audit-ready and renewal reminders active.';
+        } else {
+            banner.classList.add('show', 'bad');
+            banner.innerHTML = '<b>✕ Rejected</b> on ' + fmtDate(v.decisionAt) + '. The driver must NOT start on the DHL contract.';
+        }
+    }
+
+    renderTimeline(v);
+    renderTopbar();
+}
+
+function renderTimeline(v) {
+    let idx = 0;
+    document.getElementById('timeline').innerHTML = STEPS.map((step, si) => {
+        const base = idx;
+        const itemsHtml = step.items.map((it, ii) => {
+            const gi = base + ii;
+            const linksHtml = it.links
+                ? '<span class="check-links">' + it.links.map(l =>
+                      '<a class="check-link" href="' + l.url + '" target="_blank" rel="noopener" onclick="event.stopPropagation()">' + esc(l.label) + '</a>'
+                  ).join('') + '</span>'
+                : '';
+            return (
+                '<li class="check-item" onclick="toggleCheck(event,' + gi + ')">' +
+                    '<input type="checkbox" data-gi="' + gi + '"' + (v.checks[gi] ? ' checked' : '') + '>' +
+                    '<span class="check-text">' + esc(it.t) +
+                        (it.s ? '<small>' + esc(it.s) + '</small>' : '') +
+                        linksHtml +
+                    '</span>' +
+                '</li>'
+            );
+        }).join('');
+
+        const done = v.checks.slice(base, base + step.items.length).filter(Boolean).length;
+        const complete = done === step.items.length;
+        idx += step.items.length;
+
+        const iv = v.interview || {};
+        const interviewHtml = step.interview ? renderInterviewPanel(iv) : '';
+
+        return (
+            '<section class="step' + (openSteps.has(si) ? ' open' : '') + (complete ? ' completed' : '') + '" data-step="' + (si + 1) + '">' +
+                '<div class="step-card">' +
+                    '<div class="step-head" onclick="toggleStep(' + si + ')">' +
+                        '<div class="step-index">' + (complete ? '✓' : si + 1) + '</div>' +
+                        '<div class="step-title-group">' +
+                            '<div class="step-title">' + esc(step.title) + '</div>' +
+                            '<div class="step-sub">' + esc(step.sub) + '</div>' +
+                        '</div>' +
+                        (step.interview && (iv.decision || iv.outcome) ? '<span class="status-pill ' + (iv.decision === 'hire-strong' || iv.decision === 'hire-cond' || iv.outcome === 'Pass' ? 'approved' : iv.decision === 'decline' || iv.outcome === 'Fail' ? 'rejected' : 'progress') + '">' + esc(iv.decision === 'hire-strong' ? 'Hire ✓' : iv.decision === 'hire-cond' ? 'Conditional' : iv.decision === 'second' ? '2nd Interview' : iv.decision === 'decline' ? 'Decline' : iv.outcome.split(' ')[0]) + '</span>' : '') +
+                        '<span class="step-meter">' + done + '/' + step.items.length + '</span>' +
+                        '<span class="chev"></span>' +
+                    '</div>' +
+                    '<div class="step-body"><div class="step-body-inner">' +
+                        '<div class="divider"></div>' +
+                        interviewHtml +
+                        '<ul class="check-list">' + itemsHtml + '</ul>' +
+                        (step.hint ? '<div class="hint">' + step.hint + '</div>' : '') +
+                        (step.warn ? '<div class="warn"><strong>' + step.warn.title + '</strong>' + step.warn.text + '</div>' : '') +
+                    '</div></div>' +
+                '</div>' +
+            '</section>'
+        );
+    }).join('');
+}
+
+function toggleStep(si) {
+    openSteps.has(si) ? openSteps.delete(si) : openSteps.add(si);
+    document.querySelectorAll('#timeline .step')[si].classList.toggle('open');
+}
+
+function setInterview(field, value) {
+    const v = getVendor(currentId);
+    v.interview[field] = value;
+    saveStore();
+    // only the outcome changes something visible elsewhere (the pill in the step head)
+    if (field === 'outcome') renderCase();
+}
+
+function toggleCheck(e, gi) {
+    const v = getVendor(currentId);
+    const box = document.querySelector('#timeline input[data-gi="' + gi + '"]');
+    if (e.target !== box) box.checked = !box.checked;
+    v.checks[gi] = box.checked;
+    saveStore();
+    renderCase();
+}
+
+function expandAll() {
+    const anyClosed = STEPS.some((_, si) => !openSteps.has(si));
+    openSteps = anyClosed ? new Set(STEPS.map((_, si) => si)) : new Set();
+    document.querySelectorAll('#timeline .step').forEach((el, si) =>
+        el.classList.toggle('open', openSteps.has(si)));
+}
+
+function decide(status) {
+    const v = getVendor(currentId);
+    const { pct } = vendorProgress(v);
+    if (status === 'approved' && pct < 100 &&
+        !confirm('The checklist is at ' + pct + '%. Approve anyway?\n\nGolden Rule: only approve after full vetting and formal DHL confirmation.')) return;
+    if (status === 'rejected' && !confirm('Mark ' + v.name + ' as rejected?')) return;
+    v.status = status;
+    v.decisionAt = Date.now();
+    saveStore();
+    renderCase();
+}
+
+function reopenCase() {
+    const v = getVendor(currentId);
+    v.status = 'active';
+    v.decisionAt = null;
+    saveStore();
+    renderCase();
+}
+
+function resetCase() {
+    const v = getVendor(currentId);
+    if (!confirm('Reset the entire checklist for ' + v.name + '? All progress will be lost.')) return;
+    v.checks = new Array(TOTAL_ITEMS).fill(false);
+    saveStore();
+    renderCase();
+}
+
+function deleteVendor() {
+    const v = getVendor(currentId);
+    if (!confirm('Delete the vetting case for ' + v.name + '? This cannot be undone.')) return;
+    vendors = vendors.filter(x => x.id !== v.id);
+    saveStore();
+    showDashboard();
+}
+
+/* =====================================================
+   Export
+===================================================== */
+function exportReport() {
+    const v = getVendor(currentId);
+    const { done, pct } = vendorProgress(v);
+    const st = v.status === 'approved' ? 'APPROVED (' + fmtDate(v.decisionAt) + ')'
+        : v.status === 'rejected' ? 'REJECTED (' + fmtDate(v.decisionAt) + ')'
+        : 'IN PROGRESS';
+
+    let out = '=== DHL DRIVER VETTING — CASE REPORT ===\n';
+    out += 'Vendor: ' + v.name + '\n';
+    out += 'Role: ' + (v.role || '—') + ' · Depot: ' + (v.depot || '—') + ' · Employment: ' + (v.employment || '—') + '\n';
+    out += 'Nationality: ' + (v.nationality || '—') + ' · Proposed start: ' + fmtDate(v.startDate) + '\n';
+    out += 'Case owner: ' + (v.owner || '—') + ' · Opened: ' + fmtDate(v.createdAt) + '\n';
+    out += 'Status: ' + st + '\n';
+    out += 'Generated: ' + new Date().toLocaleString('en-GB') + '\n';
+    out += 'Overall progress: ' + pct + '% (' + done + '/' + TOTAL_ITEMS + ' items) · Steps complete: ' + vendorDoneSteps(v) + '/' + STEPS.length + '\n';
+
+    const iv = v.interview || {};
+    if (iv.date || iv.interviewer || iv.outcome || iv.notes) {
+        out += '\n--- FACE-TO-FACE INTERVIEW ---\n';
+        out += 'Date: ' + (iv.date ? fmtDate(iv.date) : '—') + ' · Interviewer: ' + (iv.interviewer || '—') + ' · Location: ' + (iv.location || '—') + '\n';
+        out += 'Outcome: ' + (iv.outcome || 'not assessed') + '\n';
+        if (iv.notes) out += 'Notes: ' + iv.notes + '\n';
+    }
+    out += '\n';
+
+    let idx = 0;
+    STEPS.forEach((step, si) => {
+        const sliceDone = v.checks.slice(idx, idx + step.items.length).filter(Boolean).length;
+        out += 'STEP ' + (si + 1) + ' — ' + step.title + ' [' + sliceDone + '/' + step.items.length + ']\n';
+        step.items.forEach((it, ii) => {
+            out += '  ' + (v.checks[idx + ii] ? '[x] ' : '[ ] ') + it.t + '\n';
+        });
+        out += '\n';
+        idx += step.items.length;
+    });
+
+    const a = document.createElement('a');
+    a.href = 'data:text/plain;charset=utf-8,' + encodeURIComponent(out);
+    a.download = 'DHL_Vetting_' + v.name.replace(/\s+/g, '_') + '_' + new Date().toISOString().slice(0, 10) + '.txt';
+    a.click();
+}
+
+/* =====================================================
+   Boot
+===================================================== */
+document.addEventListener('keydown', e => {
+    if (e.key === 'Escape' && document.getElementById('modalBackdrop').classList.contains('show')) closeModal();
+    if (e.key === 'Enter' && document.getElementById('modalBackdrop').classList.contains('show')
+        && e.target.tagName === 'INPUT') addVendor();
+});
+
+loadStore();
+showDashboard();
+</script>
+</body>
+</html>
