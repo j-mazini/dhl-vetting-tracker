@@ -104,6 +104,7 @@ async function startFirebase() {
         }) {
             if (!user) throw new Error("Sign in before uploading documents.");
             const path = `workspaces/${workspaceId}/drivers/${safeId(vendorId)}/${fileName}`;
+            console.log('[uploadDocument] Storage path:', path);
             const fileRef = storageSdk.ref(storage, path);
             const task = storageSdk.uploadBytesResumable(fileRef, file, {
                 contentType,
@@ -116,6 +117,7 @@ async function startFirebase() {
                 }
             });
 
+            console.log('[uploadDocument] Starting upload, file size:', file.size);
             await new Promise((resolve, reject) => {
                 task.on(
                     "state_changed",
@@ -123,10 +125,17 @@ async function startFirebase() {
                         const percent = snapshot.totalBytes
                             ? Math.round(snapshot.bytesTransferred / snapshot.totalBytes * 100)
                             : 0;
+                        console.log('[uploadDocument] Progress:', percent, '%');
                         if (onProgress) onProgress(percent);
                     },
-                    reject,
-                    resolve
+                    error => {
+                        console.error('[uploadDocument] Upload error:', error);
+                        reject(error);
+                    },
+                    () => {
+                        console.log('[uploadDocument] Upload completed successfully');
+                        resolve();
+                    }
                 );
             });
 
@@ -137,12 +146,14 @@ async function startFirebase() {
                     });
             }
 
-            return {
+            const result = {
                 path,
                 fileName,
                 contentType,
                 size: file.size
             };
+            console.log('[uploadDocument] Returning metadata:', result);
+            return result;
         },
 
         async viewDocument(path, fileName) {

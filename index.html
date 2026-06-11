@@ -3041,6 +3041,12 @@ async function uploadDocument(key, label, input) {
                 }
             });
             console.log('[uploadDocument] Upload successful, stored:', stored);
+
+            // Validate that storage path and metadata are present
+            if (!stored || !stored.path) {
+                throw new Error('Upload returned invalid metadata (missing path)');
+            }
+
             list.push({
                 ...stored,
                 key,
@@ -3059,7 +3065,15 @@ async function uploadDocument(key, label, input) {
             }]);
         } catch (error) {
             console.error('Document upload failed:', error);
-            failures.push(file.name + ' — ' + (error.message || error));
+            const errorMsg = error && error.message ? error.message : String(error);
+            // Check for specific Firebase Storage errors
+            if (errorMsg.includes('permission') || errorMsg.includes('auth')) {
+                failures.push(file.name + ' — storage permission denied (check Firebase rules)');
+            } else if (errorMsg.includes('network') || errorMsg.includes('timeout')) {
+                failures.push(file.name + ' — network error, please try again');
+            } else {
+                failures.push(file.name + ' — ' + errorMsg);
+            }
         }
     }
 
