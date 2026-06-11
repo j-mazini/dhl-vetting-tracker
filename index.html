@@ -2362,12 +2362,25 @@ function configureCloudSync(adapter) {
     cloudAdapter = adapter;
     adapter.subscribe(remoteVendors => {
         const openId = currentId;
+        const active = document.activeElement;
+        const editingOpenCase = openId
+            && active
+            && active.matches('input, textarea, select')
+            && document.getElementById('caseView').contains(active);
+        const localOpenCase = editingOpenCase ? getVendor(openId) : null;
+
         applyingCloudSnapshot = true;
-        vendors = remoteVendors;
+        vendors = remoteVendors.map(vendor =>
+            localOpenCase && vendor.id === openId ? localOpenCase : vendor
+        );
+        if (localOpenCase && !vendors.some(vendor => vendor.id === openId)) {
+            vendors.push(localOpenCase);
+        }
         vendors.forEach(migrateVendor);
         localStorage.setItem(STORE_KEY, JSON.stringify(vendors));
         applyingCloudSnapshot = false;
 
+        if (editingOpenCase) return;
         if (openId && getVendor(openId)) renderCase();
         else if (openId) showDashboard();
         else renderDashboard();

@@ -228,7 +228,10 @@ async function startFirebase() {
                 }
 
                 firstSnapshot = false;
-                subscriber(remote);
+                const local = window.localVendorSnapshot();
+                const isOwnPendingWrite = snapshot.metadata.hasPendingWrites;
+                const matchesLocalState = sameVendorData(remote, local);
+                if (!isOwnPendingWrite && !matchesLocalState) subscriber(remote);
                 window.setSyncStatus("online", "Synced", `Connected as ${user.email || user.displayName}`);
                 window.setAuthGate("authenticated");
             },
@@ -308,6 +311,12 @@ function safeId(value) {
 
 function fingerprint(value) {
     return JSON.stringify(value);
+}
+
+function sameVendorData(left, right) {
+    if (!Array.isArray(left) || !Array.isArray(right) || left.length !== right.length) return false;
+    const byId = new Map(right.map(vendor => [vendor.id, fingerprint(vendor)]));
+    return left.every(vendor => byId.get(vendor.id) === fingerprint(vendor));
 }
 
 function showError(error) {
