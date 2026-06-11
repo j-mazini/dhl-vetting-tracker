@@ -850,6 +850,12 @@
 
     .case-meta b { color: var(--text-soft); font-weight: 600; }
 
+    .case-drive-folder {
+        margin-top: 16px;
+        padding-top: 14px;
+        border-top: 1px solid var(--line);
+    }
+
     .case-decision {
         display: flex;
         gap: 9px;
@@ -1928,6 +1934,7 @@
                 </div>
                 <div class="case-decision" id="caseDecision"></div>
             </div>
+            <div id="caseDriveFolder"></div>
             <div class="decision-banner" id="decisionBanner"></div>
         </div>
 
@@ -2288,6 +2295,12 @@ function migrateVendor(v) {
         v.ver = 3;
     }
     if (!v.itemData) v.itemData = {};
+    const legacyDriveKeys = Object.keys(v.itemData).filter(k => k.endsWith('DriveFolderUrl'));
+    if (v.driveFolderUrl === undefined) {
+        const legacyDriveKey = legacyDriveKeys.find(k => String(v.itemData[k] || '').trim());
+        v.driveFolderUrl = legacyDriveKey ? String(v.itemData[legacyDriveKey]).trim() : '';
+    }
+    legacyDriveKeys.forEach(k => delete v.itemData[k]);
     if (!v.documents) v.documents = {};
     // documents: single object per slot (legacy) → array of files per slot
     Object.keys(v.documents).forEach(k => {
@@ -2810,6 +2823,7 @@ function addVendor() {
             totalScore: 0, scoredAt: null
         },
         itemData: {},
+        driveFolderUrl: '',
         documents: {},
         createdBy: authenticatedUser ? { ...authenticatedUser } : null,
         updatedBy: authenticatedUser ? { ...authenticatedUser } : null,
@@ -2881,6 +2895,8 @@ function renderCase() {
         'Opened: <b>' + fmtDate(v.createdAt) + '</b>',
         v.interview && v.interview.totalScore ? 'Interview score: <b>' + v.interview.totalScore + '/50</b>' : ''
     ].filter(Boolean).join(' · ');
+
+    renderCaseDriveFolder(v);
 
     // decision buttons + banner
     const dec = document.getElementById('caseDecision');
@@ -3006,13 +3022,12 @@ function driveFolderHref(value) {
     }
 }
 
-function renderDocumentUpload(v, documentType, gi, checked) {
+function renderDocumentUpload(v, documentType) {
     const files = docList(v, documentType.k);
-    const linkKey = documentType.k + 'DriveFolderUrl';
-    const driveLink = (v.itemData || {})[linkKey] || '';
-    const driveHref = driveFolderHref(driveLink);
+    if (!files.length) return '';
 
-    const rows = files.map((saved, i) => {
+    return '<span class="document-upload" data-document-key="' + esc(documentType.k) + '" onclick="event.stopPropagation()">' +
+        files.map((saved, i) => {
         const uploader = saved.uploadedBy ? saved.uploadedBy.name || saved.uploadedBy.email : '';
         const source = saved.driveId ? '☁️ Drive' : '📦 Storage';
         return '<span class="document-row">' +
@@ -3023,43 +3038,38 @@ function renderDocumentUpload(v, documentType, gi, checked) {
             '<button type="button" class="document-action view" onclick="viewDocument(\'' + esc(documentType.k) + '\',' + i + ')">View</button>' +
             '<button type="button" class="document-action" onclick="removeDocument(\'' + esc(documentType.k) + '\',' + i + ')">Delete</button>' +
         '</span>';
-    }).join('');
-
-    return '<span class="document-upload" data-document-key="' + esc(documentType.k) + '" onclick="event.stopPropagation()">' +
-        (rows || '<span class="document-name">📎 No documents linked.<br><small>Open Google Drive to manage this document.</small></span>') +
-        '<span class="document-progress" id="document-progress-' + esc(documentType.k) + '"></span>' +
-        '<div style="display:flex; gap:8px; margin-top:8px;">' +
-            '<a class="document-action drive" href="https://drive.google.com/drive/my-drive" target="_blank" rel="noopener noreferrer" title="Open Google Drive">' +
-                'Google Drive</a>' +
-        '</div>' +
-        '<span class="document-drive-field' + (checked ? ' visible' : '') + '" data-drive-link-gi="' + gi + '">' +
-            '<label for="drive-folder-' + esc(documentType.k) + '">Google Drive folder link</label>' +
-            '<span class="document-drive-row">' +
-                '<input id="drive-folder-' + esc(documentType.k) + '" class="document-drive-input" type="url" ' +
-                    'placeholder="https://drive.google.com/drive/folders/..." value="' + esc(driveLink) + '" ' +
-                    'readonly ' +
-                    'onclick="openDocumentDriveLink(this)" ' +
-                    'onkeydown="openDocumentDriveLinkWithKeyboard(event,this)" ' +
-                    'onblur="validateDocumentDriveLink(this)">' +
-                '<button type="button" class="document-action view document-drive-edit" ' +
-                    'onclick="toggleDocumentDriveEdit(\'' + esc(linkKey) + '\',\'' + esc(documentType.label) + '\',this)">' +
-                    'Edit</button>' +
-                '<a class="document-action view document-drive-action document-drive-open" href="' + esc(driveHref || '#') + '" target="_blank" rel="noopener noreferrer"' +
-                    (driveHref ? '' : ' hidden') + '>Open folder</a>' +
-                '<button type="button" class="document-action document-drive-action document-drive-delete" ' +
-                    'onclick="deleteDocumentDriveLink(\'' + esc(linkKey) + '\',\'' + esc(documentType.label) + '\',this)"' +
-                    (driveLink ? '' : ' hidden') + '>Delete</button>' +
-            '</span>' +
-        '</span>' +
+        }).join('') +
         '</span>';
 }
 
-function saveDocumentDriveLink(key, label, input) {
+function renderCaseDriveFolder(v) {
+    const container = document.getElementById('caseDriveFolder');
+    const driveLink = v.driveFolderUrl || '';
+    const driveHref = driveFolderHref(driveLink);
+
+    container.className = 'case-drive-folder';
+    container.innerHTML =
+        '<span class="document-drive-field visible">' +
+            '<label for="case-drive-folder-input">General Google Drive folder</label>' +
+            '<span class="document-drive-row">' +
+                '<input id="case-drive-folder-input" class="document-drive-input" type="url" ' +
+                    'placeholder="https://drive.google.com/drive/folders/..." value="' + esc(driveLink) + '" readonly ' +
+                    'onclick="openDocumentDriveLink(this)" onkeydown="openDocumentDriveLinkWithKeyboard(event,this)" ' +
+                    'onblur="validateDocumentDriveLink(this)">' +
+                '<button type="button" class="document-action view document-drive-edit" onclick="toggleCaseDriveEdit(this)">Edit</button>' +
+                '<a class="document-action view document-drive-action document-drive-open" href="' + esc(driveHref || '#') + '" ' +
+                    'target="_blank" rel="noopener noreferrer"' + (driveHref ? '' : ' hidden') + '>Open folder</a>' +
+                '<button type="button" class="document-action document-drive-action document-drive-delete" ' +
+                    'onclick="deleteCaseDriveLink(this)"' + (driveLink ? '' : ' hidden') + '>Delete</button>' +
+            '</span>' +
+        '</span>';
+}
+
+function saveCaseDriveLink(input) {
     const v = getVendor(currentId);
-    if (!v.itemData) v.itemData = {};
-    const before = v.itemData[key] || '';
+    const before = v.driveFolderUrl || '';
     const value = input.value.trim();
-    v.itemData[key] = value;
+    v.driveFolderUrl = value;
     input.classList.remove('invalid');
 
     const href = driveFolderHref(value);
@@ -3073,7 +3083,7 @@ function saveDocumentDriveLink(key, label, input) {
     if (deleteButton) deleteButton.hidden = !value;
 
     recordAudit(v, 'field-edit', [{
-        field: label + ' · Google Drive folder',
+        field: 'General Google Drive folder',
         before,
         after: value
     }]);
@@ -3096,7 +3106,7 @@ function openDocumentDriveLinkWithKeyboard(event, input) {
     openDocumentDriveLink(input);
 }
 
-function toggleDocumentDriveEdit(key, label, button) {
+function toggleCaseDriveEdit(button) {
     const row = button.parentElement;
     const input = row.querySelector('.document-drive-input');
     if (!input) return;
@@ -3117,13 +3127,13 @@ function toggleDocumentDriveEdit(key, label, button) {
         return;
     }
 
-    saveDocumentDriveLink(key, label, input);
+    saveCaseDriveLink(input);
     input.readOnly = true;
     button.textContent = 'Edit';
 }
 
-function deleteDocumentDriveLink(key, label, button) {
-    if (!confirm('Delete this Google Drive folder link?')) return;
+function deleteCaseDriveLink(button) {
+    if (!confirm('Delete the general Google Drive folder link?')) return;
 
     const row = button.parentElement;
     const input = row.querySelector('.document-drive-input');
@@ -3131,9 +3141,8 @@ function deleteDocumentDriveLink(key, label, button) {
     const v = getVendor(currentId);
     if (!v || !input) return;
 
-    if (!v.itemData) v.itemData = {};
-    const before = v.itemData[key] || input.value;
-    delete v.itemData[key];
+    const before = v.driveFolderUrl || input.value;
+    v.driveFolderUrl = '';
 
     input.value = '';
     input.readOnly = true;
@@ -3147,7 +3156,7 @@ function deleteDocumentDriveLink(key, label, button) {
     button.hidden = true;
 
     recordAudit(v, 'field-edit', [{
-        field: label + ' · Google Drive folder',
+        field: 'General Google Drive folder',
         before,
         after: '—'
     }]);
@@ -3449,7 +3458,7 @@ function renderTimeline(v) {
                       return '<span class="if-field"><label>' + esc(f.label) + reqMark + '</label>' + input + '</span>';
                   }).join('') + '</span>'
                 : '';
-            const documentHtml = it.doc ? renderDocumentUpload(v, it.doc, gi, !!v.checks[gi]) : '';
+            const documentHtml = it.doc ? renderDocumentUpload(v, it.doc) : '';
             return (
                 '<li class="check-item" onclick="toggleCheck(event,' + gi + ')">' +
                     '<input type="checkbox" data-gi="' + gi + '"' + (v.checks[gi] ? ' checked' : '') + '>' +
@@ -3920,8 +3929,6 @@ function toggleCheck(e, gi) {
     const before = v.checks[gi];
     v.checks[gi] = box.checked;
     const item = itemByGi(gi);
-    const driveLinkField = document.querySelector('[data-drive-link-gi="' + gi + '"]');
-    if (driveLinkField) driveLinkField.classList.toggle('visible', box.checked);
     recordAudit(v, 'checklist', [{
         field: item ? item.t : 'Checklist item ' + (gi + 1),
         before,
