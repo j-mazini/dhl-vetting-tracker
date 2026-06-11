@@ -2077,7 +2077,10 @@ const STEPS = [
               ] },
             { t: 'Right to Work — passport, visa, share code, BRP', s: 'Check expiry; if time-limited, record visa expiry date and set a reminder',
               doc: { k: 'rightToWork', label: 'Right to Work' },
-              links: [{ label: 'RTW Share Code Check', url: 'https://www.gov.uk/view-right-to-work' }],
+              links: [
+                  { label: 'RTW Share Code Check', url: 'https://www.gov.uk/view-right-to-work' },
+                  { label: 'eVisa Share Code', url: 'https://www.gov.uk/evisa/view-evisa-get-share-code-prove-immigration-status' }
+              ],
               fields: [
                   { k: 'rtwRef', label: 'Share code / visa ref', type: 'text', ph: 'e.g. W12 345 678' },
                   { k: 'rtwExpiry', label: 'Visa / RTW expiry', type: 'date' }
