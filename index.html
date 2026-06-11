@@ -892,6 +892,18 @@
     .iv-check input:checked { background: var(--green); border-color: var(--green); box-shadow: 0 0 10px rgba(24,154,85,.25); }
     .iv-check input:checked::after { content: ""; position: absolute; left: 4px; top: 1.5px; width: 5px; height: 9px; border-right: 2px solid #fff; border-bottom: 2px solid #fff; transform: rotate(45deg); }
 
+    .iv-doc-row { display: flex; align-items: center; gap: 8px; }
+    .iv-doc-row .iv-check { flex: 1; min-width: 0; }
+    .iv-doc-date-lbl { font-size: 9.5px; text-transform: uppercase; letter-spacing: .8px; font-weight: 700; color: var(--muted); flex-shrink: 0; }
+    .iv-doc-date { width: 138px; flex-shrink: 0; background: #fff; border: 1px solid var(--line); border-radius: 8px; padding: 6px 8px; font-family: inherit; font-size: 11.5px; color: var(--text); outline: none; transition: border-color .2s, background .2s; }
+    .iv-doc-date:focus { border-color: rgba(214,55,44,.5); }
+    .iv-doc-date.expired { border-color: rgba(214,55,44,.55); color: var(--ba-red-deep); background: var(--red-dim); }
+    @media (max-width: 720px) {
+        .iv-doc-row { flex-wrap: wrap; }
+        .iv-doc-row .iv-check { flex: 1 1 100%; }
+        .iv-doc-date-lbl { margin-left: 38px; }
+    }
+
     .score-row { display: flex; align-items: center; gap: 12px; padding: 10px 0; border-bottom: 1px solid var(--line); }
     .score-row:last-of-type { border-bottom: none; }
     .score-label-col { flex: 1; min-width: 0; }
@@ -1330,6 +1342,7 @@
         <button class="btn btn-danger-ghost" onclick="deleteVendor()">🗑 Delete case</button>
         <button class="btn btn-ghost" onclick="resetCase()">↺ Reset checklist</button>
         <button class="btn btn-ghost" onclick="expandAll()">Expand all</button>
+        <button class="btn btn-ghost" onclick="exportInterview()">🎤 Export interview</button>
         <button class="btn btn-main" onclick="exportReport()">↓ Export report</button>
     </div>
 </footer>
@@ -1434,7 +1447,6 @@ const STEPS = [
               ] },
             { t: 'International CRC — if 6+ months abroad in last 5 years', s: 'One per country; if unobtainable, document why and escalate to DHL' },
             { t: 'Proof of current address', s: 'Must match the address given by the driver' },
-            { t: '5-year history, month by month', s: 'No unexplained gaps over 28 days' },
             { t: 'Written references covering the full 5 years', s: 'Verbal not accepted; must come from the employer/agency' },
             { t: 'HMRC evidence (SA302, UTR) if not PAYE' },
             { t: 'APHIDS / ACCS as required for your depot',
@@ -1446,36 +1458,13 @@ const STEPS = [
         sub: 'Conducted in person by the recruiting manager · record date, outcome and notes',
         interview: true,
         items: [
-            { t: 'Interview scheduled and conducted face to face', s: 'In person at the depot — not by phone or video call' },
-            { t: 'Identity confirmed against original photo ID at the interview' },
-            { t: 'Original documents sighted and cross-checked with the driver' },
-            { t: '5-year history reviewed verbally — matches the documents' },
-            { t: 'Gaps or inconsistencies challenged and explanations recorded' },
-            { t: 'Driving experience and licence categories discussed' },
-            { t: 'Abilities and aptitudes assessed for the proposed role' },
-            { t: 'Communication / English adequate for the role' },
-            { t: 'Motivation, conduct and demeanour assessed' },
-            { t: 'Interview notes written up and filed in the case' },
-            { t: 'Suitability declaration signed by the recruiting manager' }
+            { t: 'Interview conducted face to face', s: 'In person at the depot — not by phone or video call' },
+            { t: 'Identity and original documents sighted and cross-checked with the driver' },
+            { t: '5-year history reviewed verbally — gaps challenged and explanations recorded' },
+            { t: 'Competency and practical scoring completed in the panel above' },
+            { t: 'Interview notes filed and suitability declaration signed by the recruiting manager' }
         ],
         hint: '💡 The interview is part of the evidence pack. Notes must be written, dated and signed — a verbal impression is not evidence.'
-    },
-    {
-        title: 'Check Red Flags',
-        sub: 'If any flag is unresolved, the case is NOT ready for DHL',
-        items: [
-            { t: 'No unexplained gap of 28+ days in the 5-year history' },
-            { t: 'Time abroad verified (6+ months → international CRC)' },
-            { t: 'CRC from the correct source and in hard copy' },
-            { t: 'CRC recent enough for the proposed start date' },
-            { t: 'No visa expiry or work restriction issues' },
-            { t: 'Foreign licence with no UK residency conflict' },
-            { t: 'HMRC evidence present for non-PAYE workers' },
-            { t: 'References written and from the correct source' },
-            { t: 'Names, addresses and dates consistent across documents' },
-            { t: 'Interview notes and suitability declaration on file' }
-        ],
-        warn: { title: '⛔ Stop', text: 'If any red flag is present, stop and resolve it before proceeding. Do not present the case to DHL.' }
     },
     {
         title: 'Build the 5-Year Timeline',
@@ -1488,19 +1477,20 @@ const STEPS = [
         ]
     },
     {
-        title: 'Review Evidence Quality',
-        sub: 'If any answer is "no", stop and request better evidence',
+        title: 'Red Flags & Evidence Quality',
+        sub: 'Final gate — if any answer is "no", stop and resolve before DHL',
         items: [
             { t: 'Originals available where required (not just photocopies)' },
-            { t: 'CRC from the correct official source and in hard copy' },
-            { t: 'CRC recent enough for the proposed start date' },
+            { t: 'CRC from the correct official source, in hard copy, recent enough for the start date' },
+            { t: 'International CRC obtained (if 6+ months abroad in last 5 years)' },
+            { t: 'No visa expiry or work restriction issues' },
+            { t: 'Foreign licence with no UK residency conflict' },
             { t: 'References written, signed, and from the correct source' },
-            { t: 'Dates consistent across all documents' },
+            { t: 'Names, addresses and dates consistent across all documents' },
             { t: 'Driver legally entitled to drive in the UK' },
-            { t: '5-year timeline complete with no gaps over 28 days' },
-            { t: 'Interview documented and suitability declaration signed' },
-            { t: 'HMRC evidence on file (if non-PAYE)' }
-        ]
+            { t: 'No unexplained gaps over 28 days in the 5-year timeline' }
+        ],
+        warn: { title: '⛔ Stop', text: 'If any red flag is present, stop and resolve it before proceeding. Do not present the case to DHL.' }
     },
     {
         title: 'Compliance Triage',
@@ -1576,6 +1566,32 @@ function loadStore() {
 
 // v1 → v2: the two interview items left Step 2 (old indices 19–20) and the
 // Face-to-Face Interview step (11 items) was inserted after it.
+// v2 → v3: checklist consolidated 71 → 54 items. Step 2 dropped the 5-year
+// history item (covered by the Timeline step), the Interview step shrank to 5
+// items, and the old Red Flags + Evidence Quality steps merged into one gate.
+function migrateChecksV3(c) {
+    const n = [];
+    for (let i = 0; i <= 7; i++) n.push(!!c[i]);            // Step 1 unchanged
+    for (let i = 8; i <= 19; i++) if (i !== 16) n.push(!!c[i]); // Step 2 minus 5-yr history
+    n.push(!!c[20]);                                        // interview face to face
+    n.push(!!(c[21] && c[22]));                             // identity + originals sighted
+    n.push(!!(c[23] && c[24]));                             // history reviewed + gaps challenged
+    n.push(!!(c[25] && c[26] && c[27] && c[28]));           // scoring/assessment done
+    n.push(!!(c[29] && c[30]));                             // notes filed + declaration signed
+    for (let i = 41; i <= 44; i++) n.push(!!c[i]);          // timeline step
+    n.push(!!c[45]);                                        // originals available
+    n.push(!!((c[33] || c[46]) && (c[34] || c[47])));       // CRC source + recency
+    n.push(!!c[32]);                                        // international CRC
+    n.push(!!c[35]);                                        // visa / work restriction
+    n.push(!!c[36]);                                        // foreign licence
+    n.push(!!(c[38] || c[48]));                             // references
+    n.push(!!(c[39] || c[49]));                             // consistency across documents
+    n.push(!!c[50]);                                        // legally entitled to drive
+    n.push(!!(c[31] || c[51]));                             // no unexplained gaps
+    for (let i = 54; i <= 70; i++) n.push(!!c[i]);          // triage → release unchanged
+    return n;
+}
+
 function migrateVendor(v) {
     if (!v.ver || v.ver < 2) {
         if (v.checks.length === 62) {
@@ -1587,6 +1603,13 @@ function migrateVendor(v) {
         }
         v.ver = 2;
     }
+    if (v.ver < 3) {
+        if (v.checks.length > TOTAL_ITEMS) {
+            while (v.checks.length < 71) v.checks.push(false);
+            v.checks = migrateChecksV3(v.checks);
+        }
+        v.ver = 3;
+    }
     if (!v.interview) v.interview = {};
     // expand interview object with defaults for any missing fields
     const ivDef = {
@@ -1596,12 +1619,14 @@ function migrateVendor(v) {
         comp: { comm:0, cust:0, prob:0, time:0, rely:0, adap:0, tech:0 },
         prac: { map:0, num:0, doc:0 },
         docChecks: Array(12).fill(false),
+        docExpiry: Array(12).fill(''),
         docNotes:'',
-        redFlags: Array(14).fill(false),
+        redFlags: Array(14).fill(false), redFlagNotes:'',
         strengths:'', development:'', candidateQuestions:'', overall:'',
         decision:'', conditions:'',
         nextSteps: Array(4).fill(false),
-        hrSig:'', supervisorSig:''
+        hrSig:'', supervisorSig:'',
+        totalScore: 0, scoredAt: null
     };
     Object.keys(ivDef).forEach(k => {
         if (v.interview[k] === undefined) v.interview[k] = ivDef[k];
@@ -1610,6 +1635,7 @@ function migrateVendor(v) {
     else Object.keys(ivDef.comp).forEach(k => { if (v.interview.comp[k] === undefined) v.interview.comp[k] = 0; });
     if (!v.interview.prac) v.interview.prac = ivDef.prac;
     else Object.keys(ivDef.prac).forEach(k => { if (v.interview.prac[k] === undefined) v.interview.prac[k] = 0; });
+    v.interview.totalScore = calcIvTotal(v.interview);
     while (v.checks.length < TOTAL_ITEMS) v.checks.push(false);
 }
 
@@ -1733,11 +1759,13 @@ function renderDashboard() {
         const { done, pct } = vendorProgress(v);
         const st = statusLabel(v);
         const initials = v.name.trim().split(/\s+/).map(w => w[0]).slice(0, 2).join('').toUpperCase();
+        const ivScore = v.interview && v.interview.totalScore ? v.interview.totalScore : 0;
         const meta = [
             v.role ? '<b>' + esc(v.role) + '</b>' : '',
             v.depot ? esc(v.depot) : '',
             v.startDate ? 'starts ' + fmtDate(v.startDate) : '',
-            'opened ' + fmtDate(v.createdAt)
+            'opened ' + fmtDate(v.createdAt),
+            ivScore ? 'interview score <b>' + ivScore + '/50</b>' : ''
         ].filter(Boolean).join(' · ');
         return (
             '<div class="vendor-card st-' + v.status + '" onclick="openCase(\'' + v.id + '\')">' +
@@ -1805,7 +1833,7 @@ function addVendor() {
         createdAt: Date.now(),
         status: 'active',          // active | approved | rejected
         decisionAt: null,
-        ver: 2,
+        ver: 3,
         interview: {
             date:'', interviewer:'', location:'', outcome:'', notes:'',
             supervisorName:'', startTime:'',
@@ -1813,12 +1841,14 @@ function addVendor() {
             comp: { comm:0, cust:0, prob:0, time:0, rely:0, adap:0, tech:0 },
             prac: { map:0, num:0, doc:0 },
             docChecks: Array(12).fill(false),
+            docExpiry: Array(12).fill(''),
             docNotes:'',
-            redFlags: Array(14).fill(false),
+            redFlags: Array(14).fill(false), redFlagNotes:'',
             strengths:'', development:'', candidateQuestions:'', overall:'',
             decision:'', conditions:'',
             nextSteps: Array(4).fill(false),
-            hrSig:'', supervisorSig:''
+            hrSig:'', supervisorSig:'',
+            totalScore: 0, scoredAt: null
         },
         checks: new Array(TOTAL_ITEMS).fill(false)
     };
@@ -1878,7 +1908,8 @@ function renderCase() {
         v.nationality ? 'Nationality: <b>' + esc(v.nationality) + '</b>' : '',
         v.startDate ? 'Proposed start: <b>' + fmtDate(v.startDate) + '</b>' : '',
         v.owner ? 'Case owner: <b>' + esc(v.owner) + '</b>' : '',
-        'Opened: <b>' + fmtDate(v.createdAt) + '</b>'
+        'Opened: <b>' + fmtDate(v.createdAt) + '</b>',
+        v.interview && v.interview.totalScore ? 'Interview score: <b>' + v.interview.totalScore + '/50</b>' : ''
     ].filter(Boolean).join(' · ');
 
     // decision buttons + banner
@@ -2048,6 +2079,16 @@ function ivChk(type, idx, checked) {
     return '<label class="iv-check"><input type="checkbox" ' + (checked ? 'checked' : '') + ' onchange="setIvChk(\'' + type + '\',' + idx + ',this.checked)"><span>' + esc(type === 'prep' ? PREP_ITEMS[idx] : type === 'doc' ? DOC_ITEMS[idx] : type === 'flag' ? REDFLAG_ITEMS[idx] : NEXT_ITEMS[idx]) + '</span></label>';
 }
 
+function ivDocRow(idx, iv) {
+    const exp = (iv.docExpiry && iv.docExpiry[idx]) || '';
+    const expired = exp && exp < new Date().toISOString().slice(0, 10);
+    return '<li class="iv-doc-row">' +
+        ivChk('doc', idx, iv.docChecks[idx]) +
+        '<span class="iv-doc-date-lbl">expiry</span>' +
+        '<input type="date" class="iv-doc-date' + (expired ? ' expired' : '') + '" value="' + esc(exp) + '" title="Document expiry date" onchange="setIvDocDate(' + idx + ',this)">' +
+    '</li>';
+}
+
 function scoreRow(item, group, iv) {
     const cur = iv[group][item.k];
     return '<div class="score-row">' +
@@ -2133,8 +2174,8 @@ function renderInterviewPanel(iv) {
     // ── TAB 3: DOCUMENTS ─────────────────────────────────────────
     const secDocs =
         '<div class="iv-sec' + (ivTab===3?' active':'') + '">' +
-        '<div class="iv-h">Document Collection</div><div class="iv-sub">Original + photocopy required · ' + docDone + '/12 collected</div>' +
-        '<ul class="iv-checks">' + DOC_ITEMS.map((_,i) => ivChk('doc',i,iv.docChecks[i])).join('') + '</ul>' +
+        '<div class="iv-h">Document Collection</div><div class="iv-sub">Original + photocopy required · record expiry dates where applicable · ' + docDone + '/12 collected</div>' +
+        '<ul class="iv-checks">' + DOC_ITEMS.map((_,i) => ivDocRow(i, iv)).join('') + '</ul>' +
         '<div class="iv-sep">Verification Notes</div>' +
         '<div class="field full"><textarea rows="7" placeholder="ID/Passport: ___ Expiry: ___&#10;Driving License: ___ Expiry: ___&#10;Endorsements: ___&#10;DBS Date: ___ Status: ___&#10;Right to Work: ___&#10;Any Concerns: ___" onblur="setIvTxt(\'docNotes\',this.value)">' + esc(iv.docNotes||'') + '</textarea></div>' +
         '</div>';
@@ -2193,6 +2234,8 @@ function setIvTab(tab) {
 function setIvScore(group, key, val) {
     const v = getVendor(currentId);
     v.interview[group][key] = v.interview[group][key] === val ? 0 : val; // toggle off if same
+    v.interview.totalScore = calcIvTotal(v.interview);
+    v.interview.scoredAt = Date.now();
     saveStore();
     updateScorePanel(v.interview);
 }
@@ -2231,6 +2274,13 @@ function setIvTxt(field, value) {
     const v = getVendor(currentId);
     v.interview[field] = value;
     saveStore();
+}
+
+function setIvDocDate(idx, el) {
+    const v = getVendor(currentId);
+    v.interview.docExpiry[idx] = el.value;
+    saveStore();
+    el.classList.toggle('expired', !!el.value && el.value < new Date().toISOString().slice(0, 10));
 }
 
 function setIvDecision(value) {
@@ -2319,26 +2369,13 @@ function exportReport() {
     out += 'Overall progress: ' + pct + '% (' + done + '/' + TOTAL_ITEMS + ' items) · Steps complete: ' + vendorDoneSteps(v) + '/' + STEPS.length + '\n';
 
     const iv = v.interview || {};
-    out += '\n--- FACE-TO-FACE INTERVIEW ---\n';
-    out += 'Date: ' + (iv.date ? fmtDate(iv.date) : '—') + (iv.startTime ? ' ' + iv.startTime : '') + '\n';
-    out += 'Interviewers: ' + (iv.interviewer||'—') + (iv.supervisorName ? ' / ' + iv.supervisorName : '') + ' · Location: ' + (iv.location||'—') + '\n';
-    out += 'Outcome: ' + (iv.outcome||'not assessed') + '\n';
     const total = calcIvTotal(iv); const auto = autoDecision(total, iv);
+    out += '\n--- FACE-TO-FACE INTERVIEW (SUMMARY) ---\n';
+    out += 'Date: ' + (iv.date ? fmtDate(iv.date) : '—') + (iv.startTime ? ' ' + iv.startTime : '') + '\n';
+    out += 'Outcome: ' + (iv.outcome||'not assessed') + '\n';
     out += 'Score: ' + total + '/50 · Recommendation: ' + auto.label + '\n';
     if (iv.decision) out += 'Formal decision: ' + (iv.decision==='hire-strong'?'HIRE — Strong':iv.decision==='hire-cond'?'HIRE — Conditional':iv.decision==='second'?'Second Interview':iv.decision==='decline'?'DECLINE':'—') + '\n';
-    if (iv.conditions) out += 'Conditions: ' + iv.conditions + '\n';
-    out += '\nCOMPETENCY SCORES:\n';
-    COMP_ITEMS.forEach(item => out += '  ' + item.label + ': ' + (iv.comp[item.k]||'—') + '/5' + (iv.comp[item.k] ? ' — ' + item.desc[iv.comp[item.k]-1] : '') + '\n');
-    out += 'PRACTICAL TESTS:\n';
-    PRAC_ITEMS.forEach(item => out += '  ' + item.label + ': ' + (iv.prac[item.k]||'—') + '/5\n');
-    if (iv.notes) out += '\nInterview notes: ' + iv.notes + '\n';
-    if (iv.strengths) out += 'Strengths: ' + iv.strengths + '\n';
-    if (iv.development) out += 'Development areas: ' + iv.development + '\n';
-    if (iv.overall) out += 'Overall impression: ' + iv.overall + '\n';
-    const flagged = REDFLAG_ITEMS.filter((_,i) => iv.redFlags[i]);
-    if (flagged.length) out += 'RED FLAGS: ' + flagged.join('; ') + '\n';
-    if (iv.hrSig || iv.supervisorSig) out += 'Signed: HR=' + (iv.hrSig||'—') + ' · Supervisor=' + (iv.supervisorSig||'—') + '\n';
-    out += '\n';
+    out += 'Full interview notes are issued as a separate export (Export interview).\n\n';
 
     let idx = 0;
     STEPS.forEach((step, si) => {
@@ -2351,9 +2388,65 @@ function exportReport() {
         idx += step.items.length;
     });
 
+    downloadText(out, 'DHL_Vetting_' + v.name.replace(/\s+/g, '_') + '_' + new Date().toISOString().slice(0, 10) + '.txt');
+}
+
+function exportInterview() {
+    const v = getVendor(currentId);
+    const iv = v.interview || {};
+    const total = calcIvTotal(iv); const auto = autoDecision(total, iv);
+
+    let out = '=== FACE-TO-FACE INTERVIEW NOTES ===\n';
+    out += 'Candidate: ' + v.name + '\n';
+    out += 'Role: ' + (v.role || '—') + ' · Depot: ' + (v.depot || '—') + '\n';
+    out += 'Generated: ' + new Date().toLocaleString('en-GB') + '\n';
+    out += '\n--- INTERVIEW RECORD ---\n';
+    out += 'Date: ' + (iv.date ? fmtDate(iv.date) : '—') + (iv.startTime ? ' ' + iv.startTime : '') + '\n';
+    out += 'HR Interviewer: ' + (iv.interviewer||'—') + ' · Direct Supervisor: ' + (iv.supervisorName||'—') + '\n';
+    out += 'Location: ' + (iv.location||'—') + '\n';
+    out += 'Outcome: ' + (iv.outcome||'not assessed') + '\n';
+
+    out += '\n--- SCORING ---\n';
+    out += 'COMPETENCY SCORES:\n';
+    COMP_ITEMS.forEach(item => out += '  ' + item.label + ': ' + (iv.comp[item.k]||'—') + '/5' + (iv.comp[item.k] ? ' — ' + item.desc[iv.comp[item.k]-1] : '') + '\n');
+    out += 'PRACTICAL TESTS:\n';
+    PRAC_ITEMS.forEach(item => out += '  ' + item.label + ': ' + (iv.prac[item.k]||'—') + '/5' + (iv.prac[item.k] ? ' — ' + item.desc[iv.prac[item.k]-1] : '') + '\n');
+    out += 'TOTAL SCORE: ' + total + '/50 · Recommendation: ' + auto.label + '\n';
+
+    out += '\n--- NOTES & OBSERVATIONS ---\n';
+    out += 'Interview notes: ' + (iv.notes||'—') + '\n';
+    out += 'Strengths: ' + (iv.strengths||'—') + '\n';
+    out += 'Areas for development: ' + (iv.development||'—') + '\n';
+    out += 'Questions asked by candidate: ' + (iv.candidateQuestions||'—') + '\n';
+    out += 'Overall impression: ' + (iv.overall||'—') + '\n';
+
+    const docDone = iv.docChecks.filter(Boolean).length;
+    out += '\n--- DOCUMENT COLLECTION [' + docDone + '/' + DOC_ITEMS.length + '] ---\n';
+    DOC_ITEMS.forEach((d,i) => {
+        const exp = iv.docExpiry && iv.docExpiry[i];
+        out += '  ' + (iv.docChecks[i] ? '[x] ' : '[ ] ') + d + (exp ? ' — expiry: ' + fmtDate(exp) : '') + '\n';
+    });
+    if (iv.docNotes) out += 'Verification notes: ' + iv.docNotes + '\n';
+
+    const flagged = REDFLAG_ITEMS.filter((_,i) => iv.redFlags[i]);
+    out += '\n--- RED FLAGS ---\n';
+    out += flagged.length ? flagged.map(f => '  🚩 ' + f).join('\n') + '\n' : '  None raised\n';
+    if (iv.redFlagNotes) out += 'Red flag notes: ' + iv.redFlagNotes + '\n';
+
+    out += '\n--- DECISION ---\n';
+    out += 'Formal decision: ' + (iv.decision==='hire-strong'?'HIRE — Strong Candidate':iv.decision==='hire-cond'?'HIRE — Conditional':iv.decision==='second'?'Second Interview Required':iv.decision==='decline'?'DECLINE':'— not yet decided —') + '\n';
+    if (iv.conditions) out += 'Conditions: ' + iv.conditions + '\n';
+    const next = NEXT_ITEMS.filter((_,i) => iv.nextSteps[i]);
+    if (next.length) out += 'Next steps: ' + next.join('; ') + '\n';
+    out += 'Signed: HR=' + (iv.hrSig||'—') + ' · Supervisor=' + (iv.supervisorSig||'—') + '\n';
+
+    downloadText(out, 'Interview_Notes_' + v.name.replace(/\s+/g, '_') + '_' + new Date().toISOString().slice(0, 10) + '.txt');
+}
+
+function downloadText(text, filename) {
     const a = document.createElement('a');
-    a.href = 'data:text/plain;charset=utf-8,' + encodeURIComponent(out);
-    a.download = 'DHL_Vetting_' + v.name.replace(/\s+/g, '_') + '_' + new Date().toISOString().slice(0, 10) + '.txt';
+    a.href = 'data:text/plain;charset=utf-8,' + encodeURIComponent(text);
+    a.download = filename;
     a.click();
 }
 
