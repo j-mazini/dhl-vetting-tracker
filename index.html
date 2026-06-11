@@ -1162,7 +1162,7 @@
 
     .check-item:hover { background: rgba(46,65,86,.04); }
 
-    .check-item input {
+    .check-item > input[type="checkbox"] {
         appearance: none;
         width: 21px;
         height: 21px;
@@ -1176,15 +1176,15 @@
         background: #fff;
     }
 
-    .check-item input:hover { border-color: var(--ba-red); }
+    .check-item > input[type="checkbox"]:hover { border-color: var(--ba-red); }
 
-    .check-item input:checked {
+    .check-item > input[type="checkbox"]:checked {
         background: var(--green);
         border-color: var(--green);
         box-shadow: 0 0 14px rgba(24,154,85,.3);
     }
 
-    .check-item input:checked::after {
+    .check-item > input[type="checkbox"]:checked::after {
         content: "";
         position: absolute;
         left: 5.5px;
@@ -1203,7 +1203,7 @@
         transition: color .2s;
     }
 
-    .check-item input:checked ~ .check-text {
+    .check-item > input[type="checkbox"]:checked ~ .check-text {
         color: var(--muted);
         text-decoration: line-through;
         text-decoration-color: rgba(132,147,162,.5);
@@ -1344,30 +1344,34 @@
         display: flex;
         align-items: center;
         gap: 8px;
+        flex-wrap: wrap;
     }
     .document-drive-input {
-        appearance: auto !important;
-        flex: 1;
-        width: auto !important;
-        height: auto !important;
+        flex: 1 1 280px;
+        width: auto;
+        height: auto;
         min-width: 0;
-        margin: 0 !important;
-        padding: 7px 9px !important;
-        color: var(--text) !important;
-        background: #fff !important;
-        border: 1px solid var(--line) !important;
-        border-radius: 8px !important;
-        box-shadow: none !important;
+        margin: 0;
+        padding: 7px 9px;
+        color: var(--text);
+        background: #fff;
+        border: 1px solid var(--line);
+        border-radius: 8px;
+        box-shadow: none;
         font-family: inherit;
         font-size: 12px;
         outline: none;
     }
-    .document-drive-input:focus { border-color: rgba(66,133,244,.65) !important; }
-    .document-drive-input.invalid {
-        border-color: rgba(191,29,35,.6) !important;
-        background: var(--red-dim) !important;
+    .document-drive-input[readonly] {
+        color: var(--text-soft);
+        background: var(--bg-soft);
     }
-    .document-drive-open[hidden] { display: none; }
+    .document-drive-input:focus { border-color: rgba(66,133,244,.65); }
+    .document-drive-input.invalid {
+        border-color: rgba(191,29,35,.6);
+        background: var(--red-dim);
+    }
+    .document-drive-action[hidden] { display: none; }
     .document-progress { color: var(--amber); font-size: 9.5px; font-weight: 800; }
 
     .check-links {
@@ -3021,39 +3025,108 @@ function renderDocumentUpload(v, documentType, gi, checked) {
             '<span class="document-drive-row">' +
                 '<input id="drive-folder-' + esc(documentType.k) + '" class="document-drive-input" type="url" ' +
                     'placeholder="https://drive.google.com/drive/folders/..." value="' + esc(driveLink) + '" ' +
-                    'oninput="setDocumentDriveLink(\'' + esc(linkKey) + '\',\'' + esc(documentType.label) + '\',this)" ' +
+                    (driveLink ? 'readonly ' : '') +
                     'onblur="validateDocumentDriveLink(this)">' +
-                '<a class="document-action view document-drive-open" href="' + esc(driveHref || '#') + '" target="_blank" rel="noopener noreferrer"' +
+                '<button type="button" class="document-action view document-drive-edit" ' +
+                    'onclick="toggleDocumentDriveEdit(\'' + esc(linkKey) + '\',\'' + esc(documentType.label) + '\',this)">' +
+                    (driveLink ? 'Edit' : 'Save') + '</button>' +
+                '<a class="document-action view document-drive-action document-drive-open" href="' + esc(driveHref || '#') + '" target="_blank" rel="noopener noreferrer"' +
                     (driveHref ? '' : ' hidden') + '>Open folder</a>' +
+                '<button type="button" class="document-action document-drive-action document-drive-delete" ' +
+                    'onclick="deleteDocumentDriveLink(\'' + esc(linkKey) + '\',\'' + esc(documentType.label) + '\',this)"' +
+                    (driveLink ? '' : ' hidden') + '>Delete</button>' +
             '</span>' +
         '</span>' +
         '</span>';
 }
 
-function setDocumentDriveLink(key, label, input) {
+function saveDocumentDriveLink(key, label, input) {
     const v = getVendor(currentId);
     if (!v.itemData) v.itemData = {};
     const before = v.itemData[key] || '';
-    v.itemData[key] = input.value;
+    const value = input.value.trim();
+    v.itemData[key] = value;
     input.classList.remove('invalid');
 
-    const href = driveFolderHref(input.value);
-    const openLink = input.parentElement.querySelector('.document-drive-open');
+    const href = driveFolderHref(value);
+    const row = input.parentElement;
+    const openLink = row.querySelector('.document-drive-open');
+    const deleteButton = row.querySelector('.document-drive-delete');
     if (openLink) {
         openLink.href = href || '#';
         openLink.hidden = !href;
     }
+    if (deleteButton) deleteButton.hidden = !value;
 
     recordAudit(v, 'field-edit', [{
         field: label + ' · Google Drive folder',
         before,
-        after: input.value
+        after: value
     }]);
     saveStore();
 }
 
 function validateDocumentDriveLink(input) {
     input.classList.toggle('invalid', !!input.value.trim() && !driveFolderHref(input.value));
+}
+
+function toggleDocumentDriveEdit(key, label, button) {
+    const row = button.parentElement;
+    const input = row.querySelector('.document-drive-input');
+    if (!input) return;
+
+    if (input.readOnly) {
+        input.readOnly = false;
+        button.textContent = 'Save';
+        input.focus();
+        input.select();
+        return;
+    }
+
+    const value = input.value.trim();
+    if (!value || !driveFolderHref(value)) {
+        input.classList.add('invalid');
+        alert('Paste a valid Google Drive folder link before saving.');
+        input.focus();
+        return;
+    }
+
+    saveDocumentDriveLink(key, label, input);
+    input.readOnly = true;
+    button.textContent = 'Edit';
+}
+
+function deleteDocumentDriveLink(key, label, button) {
+    if (!confirm('Delete this Google Drive folder link?')) return;
+
+    const row = button.parentElement;
+    const input = row.querySelector('.document-drive-input');
+    const editButton = row.querySelector('.document-drive-edit');
+    const v = getVendor(currentId);
+    if (!v || !input) return;
+
+    if (!v.itemData) v.itemData = {};
+    const before = v.itemData[key] || input.value;
+    delete v.itemData[key];
+
+    input.value = '';
+    input.readOnly = false;
+    input.classList.remove('invalid');
+    if (editButton) editButton.textContent = 'Save';
+    const openLink = row.querySelector('.document-drive-open');
+    if (openLink) {
+        openLink.href = '#';
+        openLink.hidden = true;
+    }
+    button.hidden = true;
+
+    recordAudit(v, 'field-edit', [{
+        field: label + ' · Google Drive folder',
+        before,
+        after: '—'
+    }]);
+    saveStore();
+    input.focus();
 }
 
 function formatFileSize(bytes) {
