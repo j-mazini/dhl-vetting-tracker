@@ -2909,11 +2909,12 @@ function documentFileDetails(file) {
 
 function standardDocumentFileName(label, driverName, extension) {
     const base = (label + ' ' + driverName)
-        .replace(/[\/\\?#\[\]*:"<>|]+/g, ' ')
-        .replace(/\s+/g, ' ')
-        .trim()
+        .replace(/[\/\\?#\[\]*:"<>|]+/g, '-')  // Replace invalid chars with hyphen
+        .replace(/\s+/g, '-')                   // Replace spaces with hyphens
+        .replace(/-+/g, '-')                    // Collapse multiple hyphens
+        .replace(/^-|-$/g, '')                  // Remove leading/trailing hyphens
         .slice(0, 160);
-    return (base || 'Driver Document') + '.' + extension;
+    return (base || 'Driver-Document') + '.' + extension;
 }
 
 function docList(v, key) {
