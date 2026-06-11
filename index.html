@@ -1350,8 +1350,8 @@
 <!-- ============ NEW VENDOR MODAL ============ -->
 <div class="modal-backdrop" id="modalBackdrop" onclick="if(event.target===this) closeModal()">
     <div class="modal">
-        <h2>Open a Vetting Case</h2>
-        <div class="modal-sub">Register the vendor / driver who is starting the vetting process. One case per driver — initial status: <b>In progress</b>.</div>
+        <h2 id="modalTitle">Open a Vetting Case</h2>
+        <div class="modal-sub" id="modalSub">Register the vendor / driver who is starting the vetting process. One case per driver — initial status: <b>In progress</b>.</div>
         <div class="form-grid">
             <div class="field full">
                 <label>Full name <span class="req">*</span></label>
@@ -1364,11 +1364,9 @@
             <div class="field">
                 <label>Proposed role</label>
                 <select id="fRole">
-                    <option>Driver</option>
-                    <option>Courier</option>
-                    <option>Van Driver</option>
-                    <option>HGV Driver</option>
-                    <option>Other</option>
+                    <option>Van Courier</option>
+                    <option>Motorbike Courier</option>
+                    <option>Bicycle Courier</option>
                 </select>
             </div>
             <div class="field">
@@ -1393,7 +1391,7 @@
                 <input type="text" id="fOwner" placeholder="Admin responsible" autocomplete="off">
             </div>
         </div>
-        <div class="doc-download-card">
+        <div class="doc-download-card" id="docDownloadCard">
             <div class="doc-icon">📋</div>
             <div class="doc-info">
                 <div class="doc-title">Required Documents Checklist</div>
@@ -1404,7 +1402,7 @@
 
         <div class="modal-actions">
             <button class="btn btn-ghost" onclick="closeModal()">Cancel</button>
-            <button class="btn btn-main" onclick="addVendor()">＋ Add vendor</button>
+            <button class="btn btn-main" id="modalSubmit" onclick="submitVendor()">＋ Add vendor</button>
         </div>
     </div>
 </div>
@@ -1420,7 +1418,7 @@ const STEPS = [
         items: [
             { t: 'Full name recorded' },
             { t: 'Service centre / depot' },
-            { t: 'Proposed role (Driver, Courier…)' },
+            { t: 'Proposed role (Van / Motorbike / Bicycle Courier)' },
             { t: 'Proposed start date' },
             { t: 'Employment status (PAYE / self-employed / Ltd / partnership)' },
             { t: 'Nationality' },
@@ -1795,12 +1793,47 @@ function renderDashboard() {
 /* =====================================================
    Modal — new vendor
 ===================================================== */
-function openModal() {
+let editingId = null;
+
+function openModal(editId) {
+    editingId = editId || null;
+    const v = editingId ? getVendor(editingId) : null;
+
+    document.getElementById('modalTitle').textContent = v ? 'Edit Case Details' : 'Open a Vetting Case';
+    document.getElementById('modalSub').innerHTML = v
+        ? 'Update or complete the courier’s details. Checklist progress and interview data are kept.'
+        : 'Register the vendor / driver who is starting the vetting process. One case per driver — initial status: <b>In progress</b>.';
+    document.getElementById('modalSubmit').textContent = v ? '✓ Save changes' : '＋ Add vendor';
+    document.getElementById('docDownloadCard').style.display = v ? 'none' : '';
+
+    document.getElementById('fName').value = v ? v.name : '';
+    document.getElementById('fDepot').value = v ? (v.depot || '') : '';
+    document.getElementById('fNationality').value = v ? (v.nationality || '') : '';
+    document.getElementById('fOwner').value = v ? (v.owner || '') : '';
+    document.getElementById('fStart').value = v ? (v.startDate || '') : '';
+
+    const roleSel = document.getElementById('fRole');
+    if (v && v.role) {
+        roleSel.value = v.role;
+        if (roleSel.value !== v.role) { // legacy role not in the current list
+            const opt = document.createElement('option');
+            opt.textContent = v.role;
+            opt.dataset.legacy = '1';
+            roleSel.appendChild(opt);
+            roleSel.value = v.role;
+        }
+    } else roleSel.selectedIndex = 0;
+
+    const empSel = document.getElementById('fEmployment');
+    if (v && v.employment) empSel.value = v.employment;
+    else empSel.selectedIndex = 0;
+
     document.getElementById('modalBackdrop').classList.add('show');
     setTimeout(() => document.getElementById('fName').focus(), 60);
 }
 
 function closeModal() {
+    editingId = null;
     document.getElementById('modalBackdrop').classList.remove('show');
     ['fName', 'fDepot', 'fNationality', 'fOwner'].forEach(id => {
         const el = document.getElementById(id);
@@ -1808,8 +1841,41 @@ function closeModal() {
         el.classList.remove('invalid');
     });
     document.getElementById('fStart').value = '';
-    document.getElementById('fRole').selectedIndex = 0;
+    const roleSel = document.getElementById('fRole');
+    roleSel.querySelectorAll('option[data-legacy]').forEach(o => o.remove());
+    roleSel.selectedIndex = 0;
     document.getElementById('fEmployment').selectedIndex = 0;
+}
+
+function submitVendor() {
+    if (editingId) saveVendorEdit();
+    else addVendor();
+}
+
+function saveVendorEdit() {
+    const v = getVendor(editingId);
+    const nameEl = document.getElementById('fName');
+    const name = nameEl.value.trim();
+    if (!name) {
+        nameEl.classList.add('invalid');
+        nameEl.focus();
+        return;
+    }
+    v.name = name;
+    v.depot = document.getElementById('fDepot').value.trim();
+    v.role = document.getElementById('fRole').value;
+    v.startDate = document.getElementById('fStart').value || null;
+    v.employment = document.getElementById('fEmployment').value;
+    v.nationality = document.getElementById('fNationality').value.trim();
+    v.owner = document.getElementById('fOwner').value.trim();
+
+    // Step 1 mirrors the form — tick anything now provided (never untick manual progress)
+    const step1 = [true, !!v.depot, !!v.role, !!v.startDate, !!v.employment, !!v.nationality, !!v.owner, true];
+    step1.forEach((val, i) => { if (val) v.checks[i] = true; });
+
+    saveStore();
+    closeModal();
+    if (currentId === v.id) renderCase(); else renderDashboard();
 }
 
 function addVendor() {
@@ -1917,12 +1983,13 @@ function renderCase() {
     const banner = document.getElementById('decisionBanner');
     banner.className = 'decision-banner';
 
+    const editBtn = '<button class="btn btn-ghost" onclick="openModal(currentId)">✎ Edit details</button>';
     if (v.status === 'active') {
-        dec.innerHTML =
+        dec.innerHTML = editBtn +
             '<button class="btn btn-approve" onclick="decide(\'approved\')">✓ Mark approved</button>' +
             '<button class="btn btn-reject" onclick="decide(\'rejected\')">✕ Mark rejected</button>';
     } else {
-        dec.innerHTML = '<button class="btn btn-ghost" onclick="reopenCase()">↺ Reopen case</button>';
+        dec.innerHTML = editBtn + '<button class="btn btn-ghost" onclick="reopenCase()">↺ Reopen case</button>';
         if (v.status === 'approved') {
             banner.classList.add('show', 'ok');
             banner.innerHTML = '<b>✓ Approved by DHL</b> on ' + fmtDate(v.decisionAt) + '. The driver may start. Keep the file audit-ready and renewal reminders active.';
@@ -2015,7 +2082,7 @@ const COMP_ITEMS = [
     { k:'comm', label:'Communication Skills',          desc:['Cannot communicate effectively','Struggles with clear communication','Adequate for customer interaction','Clear communication, minor issues','Articulate, confident, excellent English'] },
     { k:'cust', label:'Customer Service Orientation',  desc:['No customer service orientation','Limited understanding','Basic customer service awareness','Good understanding of customer service','Natural customer focus, great examples'] },
     { k:'prob', label:'Problem-Solving Ability',       desc:['Cannot solve basic problems','Struggles with complex problems','Basic problem-solving skills','Good analytical approach','Creative, logical, quick thinking'] },
-    { k:'time', label:'Time Management & Organization',desc:['No time management ability','Poor organizational skills','Basic time management','Good organizational skills','Excellent planning and prioritization'] },
+    { k:'time', label:'Time Management & Organisation',desc:['No time management ability','Poor organisational skills','Basic time management','Good organisational skills','Excellent planning and prioritisation'] },
     { k:'rely', label:'Reliability & Work Ethic',      desc:['Unreliable, poor work ethic','Some reliability concerns','Generally reliable','Reliable with good work attitude','Exceptional reliability, strong work ethic'] },
     { k:'adap', label:'Adaptability & Flexibility',    desc:['Cannot adapt to change','Struggles with change','Manages change adequately','Adapts well to change','Thrives on change, very flexible'] },
     { k:'tech', label:'Technical Aptitude',            desc:['Cannot use basic technology','Struggles with technology','Basic tech skills','Good with technology','Very tech-savvy, quick learner'] }
@@ -2023,15 +2090,15 @@ const COMP_ITEMS = [
 
 const PRAC_ITEMS = [
     { k:'map', label:'Map Reading & Navigation',  desc:['Poor planning, major route issues','Below average','Good route with minor inefficiencies','Good route','Perfect route, excellent time estimation'] },
-    { k:'num', label:'Numeracy & Calculations',   desc:['Multiple errors, struggles with basic math','Below average','Most correct, some minor errors','Good accuracy','All correct, quick calculations'] },
+    { k:'num', label:'Numeracy & Calculations',   desc:['Multiple errors, struggles with basic maths','Below average','Most correct, some minor errors','Good accuracy','All correct, quick calculations'] },
     { k:'doc', label:'Document Handling',         desc:['Multiple errors, poor attention to detail','Below average','Good completion with minor omissions','Good attention to detail','Perfect completion, excellent attention to detail'] }
 ];
 
 const DOC_ITEMS = [
     'Valid ID / Passport — check expiry, verify identity',
-    'UK Driving License — check categories, endorsements, expiry',
-    'Driver License Sharecode — note code for DVLA check',
-    'Right to Work Documentation — verify work authorization',
+    'UK Driving Licence — check categories, endorsements, expiry',
+    'Driving Licence Share Code — note code for DVLA check',
+    'Right to Work Documentation — verify work authorisation',
     'National Insurance Number — confirm format and validity',
     'DBS / CRB Certificate — must be clear, check date',
     'Proof of Address — must be within 3 months',
@@ -2049,7 +2116,7 @@ const REDFLAG_ITEMS = [
     'Inflexibility with working conditions',
     'Poor personal presentation',
     'Late arrival without valid reason',
-    'Aggressive or inappropriate behavior',
+    'Aggressive or inappropriate behaviour',
     'Cannot provide required documents',
     'Very poor English communication',
     'Cannot complete basic practical tests',
@@ -2122,7 +2189,7 @@ function renderInterviewPanel(iv) {
 
     const tabBar = '<div class="iv-tabs">' + tabs.map((t,i) =>
         '<button class="iv-tab' + (ivTab===i?' active':'') + '" onclick="setIvTab(' + i + ')">' + t.l +
-        (t.b ? '<span class="iv-badge' + (t.bRed?' red':'') + '">' + esc(t.b) + '</span>' : '') +
+        '<span class="iv-badge' + (t.bRed?' red':'') + '" id="ivTabBadge' + i + '"' + (t.b ? '' : ' style="display:none"') + '>' + esc(t.b||'') + '</span>' +
         '</button>'
     ).join('') + '</div>';
 
@@ -2177,7 +2244,7 @@ function renderInterviewPanel(iv) {
         '<div class="iv-h">Document Collection</div><div class="iv-sub">Original + photocopy required · record expiry dates where applicable · ' + docDone + '/12 collected</div>' +
         '<ul class="iv-checks">' + DOC_ITEMS.map((_,i) => ivDocRow(i, iv)).join('') + '</ul>' +
         '<div class="iv-sep">Verification Notes</div>' +
-        '<div class="field full"><textarea rows="7" placeholder="ID/Passport: ___ Expiry: ___&#10;Driving License: ___ Expiry: ___&#10;Endorsements: ___&#10;DBS Date: ___ Status: ___&#10;Right to Work: ___&#10;Any Concerns: ___" onblur="setIvTxt(\'docNotes\',this.value)">' + esc(iv.docNotes||'') + '</textarea></div>' +
+        '<div class="field full"><textarea rows="7" placeholder="ID/Passport: ___ Expiry: ___&#10;Driving Licence: ___ Expiry: ___&#10;Endorsements: ___&#10;DBS Date: ___ Status: ___&#10;Right to Work: ___&#10;Any Concerns: ___" onblur="setIvTxt(\'docNotes\',this.value)">' + esc(iv.docNotes||'') + '</textarea></div>' +
         '</div>';
 
     // ── TAB 4: RED FLAGS ─────────────────────────────────────────
@@ -2208,8 +2275,8 @@ function renderInterviewPanel(iv) {
             '<div class="iv-thresh dec-second"><b>28–31</b>Second Interview</div>' +
             '<div class="iv-thresh dec-decline"><b>&lt;28</b>Decline</div>' +
         '</div>' +
-        '<div class="iv-total-row"><span class="iv-total-lbl">Calculated score</span><span class="iv-total-val">' + total + '/50</span></div>' +
-        '<div class="iv-dec ' + auto.cls + '" style="margin-bottom:16px">' + esc(auto.label) + '</div>' +
+        '<div class="iv-total-row"><span class="iv-total-lbl">Calculated score</span><span class="iv-total-val" id="ivDecTotal">' + total + '/50</span></div>' +
+        '<div class="iv-dec ' + auto.cls + '" id="ivDecAuto" style="margin-bottom:16px">' + esc(auto.label) + '</div>' +
         '<div class="field full"><label>Formal decision</label><select onchange="setIvDecision(this.value)">' +
             decOptions.map(d => '<option value="' + esc(d.v) + '"' + (iv.decision===d.v?' selected':'') + '>' + esc(d.l) + '</option>').join('') +
         '</select></div>' +
@@ -2261,6 +2328,22 @@ function updateScorePanel(iv) {
     const autoEl  = document.getElementById('ivAutoDecision');
     if (totalEl) totalEl.textContent = total + '/50';
     if (autoEl) { autoEl.className = 'iv-dec ' + auto.cls; autoEl.textContent = auto.label; }
+
+    // keep the Decision tab and the Scoring tab badge in sync
+    const decTotal = document.getElementById('ivDecTotal');
+    const decAuto  = document.getElementById('ivDecAuto');
+    if (decTotal) decTotal.textContent = total + '/50';
+    if (decAuto) { decAuto.className = 'iv-dec ' + auto.cls; decAuto.textContent = auto.label; }
+    const scored = [...Object.values(iv.comp), ...Object.values(iv.prac)].filter(n => n > 0).length;
+    setIvBadge(2, scored > 0 ? total + '/50' : '', false);
+}
+
+function setIvBadge(i, text, red) {
+    const b = document.getElementById('ivTabBadge' + i);
+    if (!b) return;
+    b.textContent = text;
+    b.classList.toggle('red', !!red);
+    b.style.display = text ? '' : 'none';
 }
 
 function setIvChk(type, idx, checked) {
@@ -2268,6 +2351,10 @@ function setIvChk(type, idx, checked) {
     const arr = type==='prep' ? v.interview.prepChecks : type==='doc' ? v.interview.docChecks : type==='flag' ? v.interview.redFlags : v.interview.nextSteps;
     arr[idx] = checked;
     saveStore();
+    const n = arr.filter(Boolean).length;
+    if (type === 'prep') setIvBadge(0, n + '/' + PREP_ITEMS.length, false);
+    if (type === 'doc')  setIvBadge(3, n + '/' + DOC_ITEMS.length, false);
+    if (type === 'flag') setIvBadge(4, n > 0 ? n + ' flags' : '', n > 0);
 }
 
 function setIvTxt(field, value) {
@@ -2456,7 +2543,7 @@ function downloadText(text, filename) {
 document.addEventListener('keydown', e => {
     if (e.key === 'Escape' && document.getElementById('modalBackdrop').classList.contains('show')) closeModal();
     if (e.key === 'Enter' && document.getElementById('modalBackdrop').classList.contains('show')
-        && e.target.tagName === 'INPUT') addVendor();
+        && e.target.tagName === 'INPUT') submitVendor();
 });
 
 loadStore();
