@@ -1323,6 +1323,12 @@
 
     .document-action:hover { background: rgba(191,29,35,.1); }
     .document-action.view { color: var(--ba-navy); border-color: var(--line-strong); background: rgba(17,24,39,.035); }
+    .document-action.drive-edit {
+        color: #fff;
+        background: #3367d6;
+        border-color: #3367d6;
+    }
+    .document-action.drive-edit:hover { background: #2855b5; }
     .document-action.drive {
         display: inline-flex;
         align-items: center;
@@ -1385,6 +1391,14 @@
         text-decoration: none;
     }
     .document-drive-input:focus { border-color: rgba(66,133,244,.65); }
+    .document-drive-input.editing {
+        color: var(--text);
+        background: #fff;
+        cursor: text;
+        text-decoration: none;
+        border-color: rgba(66,133,244,.65);
+        box-shadow: 0 0 0 3px rgba(66,133,244,.1);
+    }
     .document-drive-input.invalid {
         border-color: rgba(191,29,35,.6);
         background: var(--red-dim);
@@ -3056,7 +3070,8 @@ function renderCaseDriveFolder(v) {
                     'placeholder="https://drive.google.com/drive/folders/..." value="' + esc(driveLink) + '" readonly ' +
                     'onclick="openDocumentDriveLink(this)" onkeydown="openDocumentDriveLinkWithKeyboard(event,this)" ' +
                     'onblur="validateDocumentDriveLink(this)">' +
-                '<button type="button" class="document-action view document-drive-edit" onclick="toggleCaseDriveEdit(this)">Edit</button>' +
+                '<button type="button" class="document-action drive-edit document-drive-edit" ' +
+                    'onclick="event.stopPropagation(); toggleCaseDriveEdit(this)">Edit Drive Link</button>' +
                 '<a class="document-action view document-drive-action document-drive-open" href="' + esc(driveHref || '#') + '" ' +
                     'target="_blank" rel="noopener noreferrer"' + (driveHref ? '' : ' hidden') + '>Open folder</a>' +
                 '<button type="button" class="document-action document-drive-action document-drive-delete" ' +
@@ -3107,13 +3122,13 @@ function openDocumentDriveLinkWithKeyboard(event, input) {
 }
 
 function toggleCaseDriveEdit(button) {
-    const row = button.parentElement;
-    const input = row.querySelector('.document-drive-input');
+    const input = document.getElementById('case-drive-folder-input');
     if (!input) return;
 
     if (input.readOnly) {
         input.readOnly = false;
-        button.textContent = 'Save';
+        input.classList.add('editing');
+        button.textContent = 'Save Drive Link';
         input.focus();
         input.select();
         return;
@@ -3129,7 +3144,8 @@ function toggleCaseDriveEdit(button) {
 
     saveCaseDriveLink(input);
     input.readOnly = true;
-    button.textContent = 'Edit';
+    input.classList.remove('editing');
+    button.textContent = 'Edit Drive Link';
 }
 
 function deleteCaseDriveLink(button) {
@@ -3146,8 +3162,9 @@ function deleteCaseDriveLink(button) {
 
     input.value = '';
     input.readOnly = true;
+    input.classList.remove('editing');
     input.classList.remove('invalid');
-    if (editButton) editButton.textContent = 'Edit';
+    if (editButton) editButton.textContent = 'Edit Drive Link';
     const openLink = row.querySelector('.document-drive-open');
     if (openLink) {
         openLink.href = '#';
