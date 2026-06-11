@@ -5,14 +5,51 @@ service cloud.firestore {
     function isBaExpressUser() {
       return request.auth != null
         && request.auth.token.email != null
-        && (
-          request.auth.token.email.matches('.*@baexpress\\.co\\.uk$')
-          || request.auth.token.email == 'jhophjm@gmail.com'
+        && request.auth.token.email.matches('^[^@]+@baexpress\\.co\\.uk$');
+    }
+
+    function validActor(actor) {
+      return actor is map
+        && actor.uid == request.auth.uid
+        && actor.email == request.auth.token.email;
+    }
+
+    function validAuditTrail() {
+      return request.resource.data.auditLog is list
+        && request.resource.data.auditLog.size() > 0
+        && request.resource.data.auditLog.size() <= 100
+        && validActor(
+          request.resource.data.auditLog[
+            request.resource.data.auditLog.size() - 1
+          ].actor
         );
     }
 
     match /workspaces/ba-express-vetting/vendors/{vendorId} {
-      allow read, create, update, delete: if isBaExpressUser();
+      allow read: if isBaExpressUser();
+
+      allow create: if isBaExpressUser()
+        && validActor(request.resource.data.createdBy)
+        && validActor(request.resource.data.updatedBy)
+        && request.resource.data._updatedAt == request.time
+        && validAuditTrail();
+
+      allow update: if isBaExpressUser()
+        && (
+          (
+            'createdBy' in resource.data
+            && request.resource.data.createdBy == resource.data.createdBy
+          )
+          || (
+            !('createdBy' in resource.data)
+            && validActor(request.resource.data.createdBy)
+          )
+        )
+        && validActor(request.resource.data.updatedBy)
+        && request.resource.data._updatedAt == request.time
+        && validAuditTrail();
+
+      allow delete: if isBaExpressUser();
     }
 
     match /{document=**} {

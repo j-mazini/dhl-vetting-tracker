@@ -35,6 +35,7 @@ async function startFirebase() {
     const auth = authSdk.getAuth(app);
     const db = firestoreSdk.getFirestore(app);
     const provider = new authSdk.GoogleAuthProvider();
+    provider.setCustomParameters({ hd: "baexpress.co.uk", prompt: "select_account" });
     const workspaceId = safeId(settings.workspaceId || "ba-express-vetting");
     const vendorsRef = firestoreSdk.collection(db, "workspaces", workspaceId, "vendors");
 
@@ -44,6 +45,7 @@ async function startFirebase() {
     let saveTimer = null;
     let pendingVendors = null;
     let firstSnapshot = true;
+    let rejectedAccountMessage = "";
     const remoteFingerprints = new Map();
 
     const adapter = {
@@ -77,6 +79,7 @@ async function startFirebase() {
                     await flush();
                     await authSdk.signOut(auth);
                 } else {
+                    rejectedAccountMessage = "";
                     window.setAuthGate("signing-in", "Choose an authorized Google account.");
                     await authSdk.signInWithPopup(auth, provider);
                 }
@@ -93,9 +96,9 @@ async function startFirebase() {
         pendingVendors = null;
 
         try {
-            const changed = snapshot.filter(vendor =>
-                remoteFingerprints.get(vendor.id) !== fingerprint(vendor)
-            );
+            const changed = snapshot
+                .map(ensureAuditIdentity)
+                .filter(vendor => remoteFingerprints.get(vendor.id) !== fingerprint(vendor));
 
             for (let offset = 0; offset < changed.length; offset += 400) {
                 const batch = firestoreSdk.writeBatch(db);
@@ -158,19 +161,63 @@ async function startFirebase() {
             unsubscribe = null;
         }
 
+        if (user && !isBaExpressEmail(user.email)) {
+            rejectedAccountMessage = `Access denied for ${user.email}. Use a Google account ending in @baexpress.co.uk.`;
+            window.setAuthenticatedUser(null);
+            window.setFirebaseAuthButton("Use another account", false);
+            window.setSyncStatus("error", "Access denied", rejectedAccountMessage);
+            window.setAuthGate("error", rejectedAccountMessage, "Use another account");
+            authSdk.signOut(auth);
+            return;
+        }
+
         if (user) {
+            window.setAuthenticatedUser(user);
             window.setFirebaseAuthButton("Sign out", false);
             window.setSyncStatus("syncing", "Loading", `Connected as ${user.email || user.displayName}`);
             window.setAuthGate("loading", `Checking access for ${user.email || user.displayName}...`);
             listenForVendors();
         } else {
+            window.setAuthenticatedUser(null);
             window.setFirebaseAuthButton("Connect", false);
             window.setSyncStatus("", "Local only", "Sign in to synchronize this browser with Firestore");
-            window.setAuthGate("signed-out");
+            if (rejectedAccountMessage) {
+                window.setAuthGate("error", rejectedAccountMessage, "Use another account");
+            } else {
+                window.setAuthGate("signed-out");
+            }
         }
     });
 
     window.configureCloudSync(adapter);
+
+    function ensureAuditIdentity(vendor) {
+        const actor = {
+            uid: user.uid,
+            email: String(user.email || "").toLowerCase(),
+            name: user.displayName || user.email || ""
+        };
+        const copy = JSON.parse(JSON.stringify(vendor));
+        const now = Date.now();
+        if (!copy.createdBy) copy.createdBy = { ...actor };
+        if (!copy.updatedBy) copy.updatedBy = { ...actor };
+        if (!copy.updatedAt) copy.updatedAt = now;
+        if (!Array.isArray(copy.auditLog)) copy.auditLog = [];
+        if (!copy.auditLog.length) {
+            copy.auditLog.push({
+                id: "a" + now + "import",
+                at: now,
+                action: "created",
+                actor: { ...actor },
+                changes: [{ field: "Driver", before: "—", after: copy.name || "Imported case" }]
+            });
+        }
+        return copy;
+    }
+}
+
+function isBaExpressEmail(email) {
+    return /^[^@\s]+@baexpress\.co\.uk$/i.test(String(email || ""));
 }
 
 function safeId(value) {

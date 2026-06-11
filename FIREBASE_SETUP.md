@@ -172,8 +172,8 @@ termine em:
 @baexpress.co.uk
 ```
 
-Tambem existe uma excecao administrativa para `jhophjm@gmail.com`, usada para
-configuracao e testes do projeto.
+Nao existem excecoes para Gmail ou outros dominios. O frontend e as regras do
+Firestore exigem uma conta Google `@baexpress.co.uk`.
 
 Trecho principal:
 
@@ -182,31 +182,6 @@ function isBaExpressUser() {
   return request.auth != null
     && request.auth.token.email != null
     && request.auth.token.email.matches('.*@baexpress\\.co\\.uk$');
-}
-```
-
-### Se voce ainda estiver testando com Gmail
-
-Uma conta `usuario@gmail.com` recebera `permission-denied`. Para permitir apenas
-um email de teste, altere temporariamente a funcao para:
-
-```javascript
-function isBaExpressUser() {
-  return request.auth != null
-    && request.auth.token.email == 'seu-email@gmail.com';
-}
-```
-
-Para permitir o dominio BA Express e um administrador externo:
-
-```javascript
-function isBaExpressUser() {
-  return request.auth != null
-    && request.auth.token.email != null
-    && (
-      request.auth.token.email.matches('.*@baexpress\\.co\\.uk$')
-      || request.auth.token.email == 'administrador@gmail.com'
-    );
 }
 ```
 

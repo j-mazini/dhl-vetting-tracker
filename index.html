@@ -877,6 +877,80 @@
         color: var(--ba-red-deep);
     }
 
+    .audit-panel {
+        margin: -12px 0 26px;
+        padding: 16px 18px;
+        background: rgba(255,255,255,.72);
+        border: 1px solid var(--line);
+        border-radius: 16px;
+        box-shadow: var(--glass-shadow);
+    }
+
+    .audit-summary {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 12px;
+        flex-wrap: wrap;
+    }
+
+    .audit-summary-text {
+        color: var(--text-soft);
+        font-size: 11px;
+        line-height: 1.55;
+    }
+
+    .audit-summary-text b { color: var(--text); }
+
+    .audit-toggle {
+        border: 0;
+        background: none;
+        color: var(--ba-red);
+        font: inherit;
+        font-size: 10px;
+        font-weight: 800;
+        letter-spacing: .08em;
+        text-transform: uppercase;
+        cursor: pointer;
+    }
+
+    .audit-list {
+        display: none;
+        list-style: none;
+        margin-top: 14px;
+        padding-top: 12px;
+        border-top: 1px solid var(--line);
+        max-height: 290px;
+        overflow: auto;
+    }
+
+    .audit-panel.open .audit-list { display: block; }
+
+    .audit-entry {
+        display: grid;
+        grid-template-columns: 122px 1fr;
+        gap: 12px;
+        padding: 8px 4px;
+        border-bottom: 1px solid var(--line);
+    }
+
+    .audit-entry:last-child { border-bottom: 0; }
+
+    .audit-when {
+        color: var(--muted);
+        font-size: 9.5px;
+        line-height: 1.5;
+    }
+
+    .audit-detail {
+        color: var(--text-soft);
+        font-size: 10.5px;
+        line-height: 1.5;
+    }
+
+    .audit-detail b { color: var(--text); }
+    .audit-change { display: block; color: var(--muted); margin-top: 2px; }
+
     /* ===== Golden rule ===== */
     .golden-rule {
         position: relative;
@@ -1727,6 +1801,8 @@
             <div class="decision-banner" id="decisionBanner"></div>
         </div>
 
+        <div class="audit-panel" id="auditPanel"></div>
+
         <div class="golden-rule">
             <div class="icon">⚖️</div>
             <div>
@@ -2010,6 +2086,7 @@ let openSteps = new Set([0]);  // expanded steps in case view
 let ivTab = 0;                 // active tab inside the interview panel
 let cloudAdapter = null;
 let applyingCloudSnapshot = false;
+let authenticatedUser = null;
 
 function loadStore() {
     try {
@@ -2068,6 +2145,10 @@ function migrateVendor(v) {
     if (!v.itemData) v.itemData = {};
     if (v.dob === undefined) v.dob = '';
     if (v.address === undefined) v.address = '';
+    if (!Array.isArray(v.auditLog)) v.auditLog = [];
+    if (v.createdBy === undefined) v.createdBy = null;
+    if (v.updatedBy === undefined) v.updatedBy = null;
+    if (v.updatedAt === undefined) v.updatedAt = v.createdAt || null;
     if (!v.interview) v.interview = {};
     // expand interview object with defaults for any missing fields
     const ivDef = {
@@ -2103,6 +2184,63 @@ function saveStore() {
 }
 
 function getVendor(id) { return vendors.find(v => v.id === id); }
+
+function setAuthenticatedUser(user) {
+    authenticatedUser = user ? {
+        uid: user.uid || '',
+        email: String(user.email || '').toLowerCase(),
+        name: user.displayName || user.email || ''
+    } : null;
+}
+
+function auditValue(value) {
+    if (value === undefined || value === null || value === '') return '—';
+    if (Array.isArray(value)) return value.join(', ');
+    if (typeof value === 'object') return JSON.stringify(value);
+    return String(value);
+}
+
+function recordAudit(v, action, changes) {
+    if (!authenticatedUser || !v) return;
+    const now = Date.now();
+    const cleanChanges = (changes || []).filter(change =>
+        auditValue(change.before) !== auditValue(change.after)
+    ).map(change => ({
+        field: change.field,
+        before: auditValue(change.before).slice(0, 300),
+        after: auditValue(change.after).slice(0, 300)
+    }));
+    if (action !== 'created' && !cleanChanges.length) return;
+
+    if (!v.createdBy) v.createdBy = { ...authenticatedUser };
+    v.updatedBy = { ...authenticatedUser };
+    v.updatedAt = now;
+    if (!Array.isArray(v.auditLog)) v.auditLog = [];
+
+    const last = v.auditLog[v.auditLog.length - 1];
+    const canMerge = action === 'field-edit'
+        && cleanChanges.length === 1
+        && last
+        && last.action === action
+        && last.actor && last.actor.uid === authenticatedUser.uid
+        && last.changes && last.changes.length === 1
+        && last.changes[0].field === cleanChanges[0].field
+        && now - last.at < 2500;
+
+    if (canMerge) {
+        last.at = now;
+        last.changes[0].after = cleanChanges[0].after;
+    } else {
+        v.auditLog.push({
+            id: 'a' + now + Math.random().toString(36).slice(2, 6),
+            at: now,
+            action,
+            actor: { ...authenticatedUser },
+            changes: cleanChanges
+        });
+        if (v.auditLog.length > 100) v.auditLog = v.auditLog.slice(-100);
+    }
+}
 
 function setSyncStatus(state, text, title) {
     const el = document.getElementById('syncStatus');
@@ -2189,6 +2327,7 @@ window.localVendorSnapshot = localVendorSnapshot;
 window.setSyncStatus = setSyncStatus;
 window.setFirebaseAuthButton = setFirebaseAuthButton;
 window.setAuthGate = setAuthGate;
+window.setAuthenticatedUser = setAuthenticatedUser;
 
 function vendorProgress(v) {
     const done = v.checks.filter(Boolean).length;
@@ -2408,6 +2547,11 @@ function submitVendor() {
 
 function saveVendorEdit() {
     const v = getVendor(editingId);
+    const before = {
+        name: v.name, depot: v.depot, role: v.role, startDate: v.startDate,
+        employment: v.employment, nationality: v.nationality, dob: v.dob,
+        address: v.address, owner: v.owner
+    };
     const nameEl = document.getElementById('fName');
     const name = nameEl.value.trim();
     if (!name) {
@@ -2429,6 +2573,17 @@ function saveVendorEdit() {
     const step1 = [true, !!v.depot, !!v.role, !!v.startDate, !!v.employment, !!v.nationality, !!v.owner, true];
     step1.forEach((val, i) => { if (val) v.checks[i] = true; });
 
+    recordAudit(v, 'case-details', [
+        { field: 'Full name', before: before.name, after: v.name },
+        { field: 'Depot', before: before.depot, after: v.depot },
+        { field: 'Role', before: before.role, after: v.role },
+        { field: 'Proposed start date', before: before.startDate, after: v.startDate },
+        { field: 'Employment status', before: before.employment, after: v.employment },
+        { field: 'Nationality', before: before.nationality, after: v.nationality },
+        { field: 'Date of birth', before: before.dob, after: v.dob },
+        { field: 'Current address', before: before.address, after: v.address },
+        { field: 'Case owner', before: before.owner, after: v.owner }
+    ]);
     saveStore();
     closeModal();
     if (currentId === v.id) renderCase(); else renderDashboard();
@@ -2475,6 +2630,10 @@ function addVendor() {
             totalScore: 0, scoredAt: null
         },
         itemData: {},
+        createdBy: authenticatedUser ? { ...authenticatedUser } : null,
+        updatedBy: authenticatedUser ? { ...authenticatedUser } : null,
+        updatedAt: Date.now(),
+        auditLog: [],
         checks: new Array(TOTAL_ITEMS).fill(false)
     };
 
@@ -2482,6 +2641,9 @@ function addVendor() {
     const step1 = [true, !!v.depot, !!v.role, !!v.startDate, !!v.employment, !!v.nationality, !!v.owner, true];
     step1.forEach((val, i) => v.checks[i] = val);
 
+    recordAudit(v, 'created', [
+        { field: 'Driver', before: '', after: v.name }
+    ]);
     vendors.push(v);
     saveStore();
     closeModal();
@@ -2560,8 +2722,68 @@ function renderCase() {
         }
     }
 
+    renderAuditPanel(v);
     renderTimeline(v);
     renderTopbar();
+}
+
+function renderAuditPanel(v) {
+    const panel = document.getElementById('auditPanel');
+    const created = v.createdBy
+        ? '<b>Created by ' + esc(v.createdBy.name || v.createdBy.email) + '</b> (' + esc(v.createdBy.email) + ')'
+        : '<b>Creator not recorded</b> (legacy case)';
+    const updated = v.updatedBy
+        ? 'Last edited by <b>' + esc(v.updatedBy.name || v.updatedBy.email) + '</b> on ' + fmtDateTime(v.updatedAt)
+        : 'No recorded edits';
+    const entries = (v.auditLog || []).slice().reverse();
+
+    panel.innerHTML =
+        '<div class="audit-summary">' +
+            '<div class="audit-summary-text">' + created + '<br>' + updated + '</div>' +
+            '<button class="audit-toggle" onclick="toggleAuditPanel()">' +
+                (entries.length ? 'View history (' + entries.length + ')' : 'No history') +
+            '</button>' +
+        '</div>' +
+        '<ul class="audit-list">' +
+            (entries.length ? entries.map(auditEntryHtml).join('') :
+                '<li class="audit-entry"><span class="audit-when">—</span><span class="audit-detail">Changes made before audit tracking was enabled are not available.</span></li>') +
+        '</ul>';
+}
+
+function auditEntryHtml(entry) {
+    const actor = entry.actor || {};
+    const action = entry.action === 'created' ? 'Created this driver case'
+        : entry.action === 'case-details' ? 'Updated case details'
+        : entry.action === 'checklist' ? 'Updated checklist'
+        : entry.action === 'interview' ? 'Updated interview'
+        : entry.action === 'decision' ? 'Changed case decision'
+        : entry.action === 'reset' ? 'Reset checklist'
+        : 'Edited a field';
+    const changes = (entry.changes || []).map(change =>
+        '<span class="audit-change"><b>' + esc(change.field) + ':</b> ' +
+        esc(change.before) + ' → ' + esc(change.after) + '</span>'
+    ).join('');
+    return '<li class="audit-entry">' +
+        '<span class="audit-when">' + fmtDateTime(entry.at) + '</span>' +
+        '<span class="audit-detail"><b>' + esc(actor.name || actor.email || 'Unknown user') + '</b> · ' +
+            esc(action) + changes + '</span>' +
+        '</li>';
+}
+
+function toggleAuditPanel() {
+    const panel = document.getElementById('auditPanel');
+    panel.classList.toggle('open');
+    const btn = panel.querySelector('.audit-toggle');
+    const count = (getVendor(currentId).auditLog || []).length;
+    btn.textContent = panel.classList.contains('open') ? 'Hide history' : 'View history (' + count + ')';
+}
+
+function fmtDateTime(value) {
+    if (!value) return '—';
+    return new Date(value).toLocaleString('en-GB', {
+        day: '2-digit', month: 'short', year: 'numeric',
+        hour: '2-digit', minute: '2-digit'
+    });
 }
 
 function renderTimeline(v) {
@@ -2880,9 +3102,15 @@ function setIvTab(tab) {
 
 function setIvScore(group, key, val) {
     const v = getVendor(currentId);
+    const before = v.interview[group][key];
     v.interview[group][key] = v.interview[group][key] === val ? 0 : val; // toggle off if same
     v.interview.totalScore = calcIvTotal(v.interview);
     v.interview.scoredAt = Date.now();
+    recordAudit(v, 'interview', [{
+        field: 'Interview score · ' + key,
+        before,
+        after: v.interview[group][key]
+    }]);
     saveStore();
     updateScorePanel(v.interview);
 }
@@ -2929,7 +3157,13 @@ function setIvBadge(i, text, red) {
 function setIvChk(type, idx, checked) {
     const v = getVendor(currentId);
     const arr = type==='prep' ? v.interview.prepChecks : type==='doc' ? v.interview.docChecks : type==='flag' ? v.interview.redFlags : v.interview.nextSteps;
+    const before = arr[idx];
     arr[idx] = checked;
+    recordAudit(v, 'interview', [{
+        field: 'Interview ' + type + ' · ' + (idx + 1),
+        before,
+        after: checked
+    }]);
     saveStore();
     const n = arr.filter(Boolean).length;
     if (type === 'prep') setIvBadge(0, n + '/' + PREP_ITEMS.length, false);
@@ -2939,27 +3173,51 @@ function setIvChk(type, idx, checked) {
 
 function setIvTxt(field, value) {
     const v = getVendor(currentId);
+    const before = v.interview[field];
     v.interview[field] = value;
+    recordAudit(v, 'field-edit', [{
+        field: 'Interview · ' + field,
+        before,
+        after: value
+    }]);
     saveStore();
 }
 
 function setIvDocDate(idx, el) {
     const v = getVendor(currentId);
+    const before = v.interview.docExpiry[idx];
     v.interview.docExpiry[idx] = el.value;
+    recordAudit(v, 'interview', [{
+        field: 'Document expiry · ' + (idx + 1),
+        before,
+        after: el.value
+    }]);
     saveStore();
     el.classList.toggle('expired', !!el.value && el.value < new Date().toISOString().slice(0, 10));
 }
 
 function setIvDecision(value) {
     const v = getVendor(currentId);
+    const before = v.interview.decision;
     v.interview.decision = value;
+    recordAudit(v, 'decision', [{
+        field: 'Interview decision',
+        before,
+        after: value
+    }]);
     saveStore();
     renderCase(); // re-render to show/hide conditions textarea + update header pill
 }
 
 function setInterview(field, value) {
     const v = getVendor(currentId);
+    const before = v.interview[field];
     v.interview[field] = value;
+    recordAudit(v, 'interview', [{
+        field: 'Interview · ' + field,
+        before,
+        after: value
+    }]);
     saveStore();
     if (field === 'outcome') renderCase();
 }
@@ -2994,7 +3252,14 @@ function toggleCheck(e, gi) {
         }
     }
 
+    const before = v.checks[gi];
     v.checks[gi] = box.checked;
+    const item = itemByGi(gi);
+    recordAudit(v, 'checklist', [{
+        field: item ? item.t : 'Checklist item ' + (gi + 1),
+        before,
+        after: box.checked
+    }]);
     saveStore();
     renderCase();
 }
@@ -3002,8 +3267,17 @@ function toggleCheck(e, gi) {
 function setItemField(key, el) {
     const v = getVendor(currentId);
     if (!v.itemData) v.itemData = {};
+    const before = v.itemData[key] || '';
     v.itemData[key] = el.value;
     el.classList.remove('invalid');
+    let label = key;
+    STEPS.some(step => step.items.some(item => {
+        const field = (item.fields || []).find(candidate => candidate.k === key);
+        if (!field) return false;
+        label = field.label;
+        return true;
+    }));
+    recordAudit(v, 'field-edit', [{ field: label, before, after: el.value }]);
     saveStore();
 }
 
@@ -3023,16 +3297,20 @@ function decide(status) {
     }
     if (status === 'approved' && !confirm('Confirm DHL approval for ' + v.name + '?')) return;
     if (status === 'rejected' && !confirm('Mark ' + v.name + ' as rejected?')) return;
+    const before = v.status;
     v.status = status;
     v.decisionAt = Date.now();
+    recordAudit(v, 'decision', [{ field: 'Case status', before, after: status }]);
     saveStore();
     renderCase();
 }
 
 function reopenCase() {
     const v = getVendor(currentId);
+    const before = v.status;
     v.status = 'active';
     v.decisionAt = null;
+    recordAudit(v, 'decision', [{ field: 'Case status', before, after: 'active' }]);
     saveStore();
     renderCase();
 }
@@ -3040,7 +3318,13 @@ function reopenCase() {
 function resetCase() {
     const v = getVendor(currentId);
     if (!confirm('Reset the entire checklist for ' + v.name + '? All progress will be lost.')) return;
+    const completed = v.checks.filter(Boolean).length;
     v.checks = new Array(TOTAL_ITEMS).fill(false);
+    recordAudit(v, 'reset', [{
+        field: 'Checklist progress',
+        before: completed + '/' + TOTAL_ITEMS,
+        after: '0/' + TOTAL_ITEMS
+    }]);
     saveStore();
     renderCase();
 }
@@ -3085,6 +3369,8 @@ function reportBlocks(v) {
         { text: 'Date of birth: ' + (v.dob ? fmtDate(v.dob) : '—') + ' · Nationality: ' + (v.nationality || '—') },
         { text: 'Current address: ' + (v.address || '—') },
         { text: 'Proposed start: ' + fmtDate(v.startDate) + ' · Case owner: ' + (v.owner || '—') + ' · Opened: ' + fmtDate(v.createdAt) },
+        { text: 'Created by: ' + (v.createdBy ? v.createdBy.email : 'Legacy / not recorded') +
+            ' · Last edited by: ' + (v.updatedBy ? v.updatedBy.email : '—') },
         { text: 'Status: ' + st, bold: true },
         { text: 'Overall progress: ' + pct + '% (' + done + '/' + TOTAL_ITEMS + ' items) · Steps complete: ' + vendorDoneSteps(v) + '/' + STEPS.length }
     ]});
