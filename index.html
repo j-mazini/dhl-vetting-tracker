@@ -7,6 +7,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Archivo:ital,wght@0,400;0,500;0,600;0,700;0,800;0,900;1,800&family=Archivo+Expanded:wght@700;800;900&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <style>
     :root {
         --ba-red: #D6372C;
@@ -824,6 +825,47 @@
         line-height: 1.5;
     }
 
+    .item-fields {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+        gap: 8px;
+        margin-top: 9px;
+        text-decoration: none !important;
+    }
+
+    .if-field { display: flex; flex-direction: column; gap: 3px; min-width: 0; }
+
+    .if-field label {
+        font-size: 9.5px;
+        text-transform: uppercase;
+        letter-spacing: .9px;
+        font-weight: 700;
+        color: var(--muted);
+        text-decoration: none !important;
+    }
+
+    .if-field label i { color: var(--ba-red); font-style: normal; }
+
+    .if-field input, .if-field select {
+        background: #fff;
+        border: 1px solid var(--line);
+        border-radius: 8px;
+        padding: 7px 9px;
+        font-family: inherit;
+        font-size: 12px;
+        color: var(--text);
+        outline: none;
+        transition: border-color .2s, background .2s;
+        width: 100%;
+    }
+
+    .if-field input:focus, .if-field select:focus { border-color: rgba(214,55,44,.5); }
+
+    .if-field input.invalid, .if-field select.invalid {
+        border-color: rgba(214,55,44,.6);
+        background: var(--red-dim);
+    }
+
     .check-links {
         display: flex;
         flex-wrap: wrap;
@@ -1387,6 +1429,14 @@
                 <input type="text" id="fNationality" placeholder="e.g. British" autocomplete="off">
             </div>
             <div class="field">
+                <label>Date of birth</label>
+                <input type="date" id="fDob">
+            </div>
+            <div class="field full">
+                <label>Current address</label>
+                <input type="text" id="fAddress" placeholder="Street, city, postcode" autocomplete="off">
+            </div>
+            <div class="field">
                 <label>Case owner</label>
                 <input type="text" id="fOwner" placeholder="Admin responsible" autocomplete="off">
             </div>
@@ -1430,25 +1480,60 @@ const STEPS = [
         title: 'Collect Core Evidence',
         sub: 'Use the Driver Document Request Checklist (Appendix A)',
         items: [
-            { t: 'Identity — original passport or acceptable photo ID', s: 'Original required; verify in person before DHL handoff' },
+            { t: 'Identity — original passport or acceptable photo ID', s: 'Original required; verify in person before DHL handoff',
+              fields: [
+                  { k: 'idRef', label: 'Document type / number', type: 'text', ph: 'e.g. Passport 123456789' },
+                  { k: 'idExpiry', label: 'Document expiry', type: 'date' }
+              ] },
             { t: 'Right to Work — passport, visa, share code, BRP', s: 'Check expiry; if time-limited, record visa expiry date and set a reminder',
-              links: [{ label: 'RTW Share Code Check', url: 'https://www.gov.uk/view-right-to-work' }] },
-            { t: 'Sanctions / Denied Parties — dated check result', s: 'Retain the evidence of the check, not just the result',
-              links: [{ label: 'Sanctions Search (OFAC)', url: 'https://sanctionssearch.ofac.treas.gov' }] },
-            { t: 'Full UK or valid foreign driving licence', s: 'If foreign, check UK residency rules for licence validity' },
+              links: [{ label: 'RTW Share Code Check', url: 'https://www.gov.uk/view-right-to-work' }],
+              fields: [
+                  { k: 'rtwRef', label: 'Share code / visa ref', type: 'text', ph: 'e.g. W12 345 678' },
+                  { k: 'rtwExpiry', label: 'Visa / RTW expiry', type: 'date' }
+              ] },
+            { t: 'Sanctions / Denied Parties — dated check result', s: 'Check must be dated; retain the evidence of the check, not just the result',
+              links: [{ label: 'Sanctions Search (OFAC)', url: 'https://sanctionssearch.ofac.treas.gov' }],
+              fields: [
+                  { k: 'sanctionsDate', label: 'Check date', type: 'date', req: true },
+                  { k: 'sanctionsResult', label: 'Result', type: 'text', ph: 'e.g. Clear' }
+              ] },
+            { t: 'Full UK or valid foreign driving licence', s: 'If foreign, check UK residency rules for licence validity',
+              fields: [
+                  { k: 'licCountry', label: 'Licence country of issue', type: 'text', ph: 'e.g. UK' },
+                  { k: 'licExpiry', label: 'Licence expiry', type: 'date' }
+              ] },
             { t: 'DVLA check — code result or share result', s: 'Check points, bans, disqualifications; record the check date',
-              links: [{ label: 'DVLA Driving Check', url: 'https://www.gov.uk/check-driving-information' }] },
+              links: [{ label: 'DVLA Driving Check', url: 'https://www.gov.uk/check-driving-information' }],
+              fields: [
+                  { k: 'dvlaDate', label: 'Check date', type: 'date', req: true },
+                  { k: 'dvlaPoints', label: 'Points / bans / endorsements', type: 'text', ph: 'e.g. None' }
+              ] },
             { t: 'UK CRC — original hard-copy basic DBS or Disclosure Scotland', s: 'Electronic/online copies not acceptable where hard copy is required',
               links: [
                   { label: 'Criminal Record (England/Wales)', url: 'https://www.gov.uk/request-copy-criminal-record' },
                   { label: 'Disclosure (Scotland)', url: 'https://www.mygov.scot/apply-for-level-1-disclosure' }
+              ],
+              fields: [
+                  { k: 'crcIssue', label: 'Certificate issue date', type: 'date', req: true },
+                  { k: 'crcSource', label: 'Source', type: 'select', opts: ['DBS (England/Wales)', 'Disclosure Scotland'] }
               ] },
-            { t: 'International CRC — if 6+ months abroad in last 5 years', s: 'One per country; if unobtainable, document why and escalate to DHL' },
-            { t: 'Proof of current address', s: 'Must match the address given by the driver' },
-            { t: 'Written references covering the full 5 years', s: 'Verbal not accepted; must come from the employer/agency' },
-            { t: 'HMRC evidence (SA302, UTR) if not PAYE' },
+            { t: 'International CRC — if 6+ months abroad in last 5 years', s: 'One per country; if unobtainable, document why and escalate to DHL',
+              fields: [{ k: 'intlCrc', label: 'Countries & dates (or N/A)', type: 'text', ph: 'e.g. Poland 2022–2023, or N/A' }] },
+            { t: 'Proof of current address', s: 'Must be current and match the address given by the driver',
+              fields: [
+                  { k: 'addrDocType', label: 'Document type', type: 'text', ph: 'e.g. Council tax bill' },
+                  { k: 'addrDocDate', label: 'Document date', type: 'date' }
+              ] },
+            { t: 'Written references covering the full 5 years', s: 'Verbal not accepted; must come from the employer/agency',
+              fields: [{ k: 'refCoverage', label: 'Referees / period covered', type: 'text', ph: 'e.g. Acme Ltd 2021–2024, XYZ Agency 2024–2026' }] },
+            { t: 'HMRC evidence (SA302, UTR) if not PAYE',
+              fields: [{ k: 'hmrcRef', label: 'UTR / evidence reference (or N/A)', type: 'text', ph: 'e.g. UTR 1234567890, or N/A' }] },
             { t: 'APHIDS / ACCS as required for your depot',
-              links: [{ label: 'APHIDS Application', url: 'https://cargo.aphids-application.homeoffice.gov.uk' }] }
+              links: [{ label: 'APHIDS Application', url: 'https://cargo.aphids-application.homeoffice.gov.uk' }],
+              fields: [
+                  { k: 'aphidsDate', label: 'Submission date', type: 'date' },
+                  { k: 'aphidsRef', label: 'Reference', type: 'text', ph: 'Submission reference' }
+              ] }
         ]
     },
     {
@@ -1470,7 +1555,8 @@ const STEPS = [
         items: [
             { t: 'All periods mapped (employment, education, self-employment, unemployment, travel)' },
             { t: 'Country of residence recorded for every period' },
-            { t: 'Gaps of 28+ days backed by documentary evidence', s: 'Benefit letters, travel records, tenancy agreements, signed declarations with supporting documents' },
+            { t: 'Gaps of 28+ days backed by documentary evidence', s: 'Benefit letters, travel records, tenancy agreements, signed declarations with supporting documents',
+              fields: [{ k: 'gapEvidence', label: 'Gap evidence summary (or N/A)', type: 'text', ph: 'e.g. Mar–May 2023: DWP benefit letters on file' }] },
             { t: 'No gap relying on a verbal explanation only', s: 'A verbal explanation is not evidence — if it cannot be documented, it is a gap' }
         ]
     },
@@ -1495,9 +1581,12 @@ const STEPS = [
         sub: 'AI-assisted or manual review using the Case Input Template (Appendix B)',
         items: [
             { t: 'Compliance check result per evidence area' },
-            { t: 'List of missing or weak items' },
-            { t: 'Risk level assigned (Low / Medium / High)' },
-            { t: 'Start decision (Yes / No / Not yet / Only with documented DHL exception)' },
+            { t: 'List of missing or weak items',
+              fields: [{ k: 'missingItems', label: 'Missing / weak items (or None)', type: 'text', ph: 'e.g. None' }] },
+            { t: 'Risk level assigned (Low / Medium / High)',
+              fields: [{ k: 'riskLevel', label: 'Risk level', type: 'select', opts: ['Low', 'Medium', 'High'], req: true }] },
+            { t: 'Start decision (Yes / No / Not yet / Only with documented DHL exception)',
+              fields: [{ k: 'startDecision', label: 'Start decision', type: 'select', opts: ['Yes', 'No', 'Not yet', 'Only with documented DHL exception'], req: true }] },
             { t: 'Next actions with owners and deadlines' },
             { t: 'Draft communication prepared (driver or DHL) if needed' }
         ],
@@ -1509,7 +1598,8 @@ const STEPS = [
         items: [
             { t: 'DHL Express Vetting Review Form prepared with all supporting evidence' },
             { t: 'APHIDS submission confirmation included in the pack' },
-            { t: 'Original documents presented in person to DHL' }
+            { t: 'Original documents presented in person to DHL',
+              fields: [{ k: 'presentedDate', label: 'Presented on', type: 'date' }] }
         ]
     },
     {
@@ -1517,7 +1607,8 @@ const STEPS = [
         sub: 'DHL Service Centre Manager reviews the complete pack',
         items: [
             { t: 'Complete pack submitted to DHL for review' },
-            { t: 'Submission date recorded in the case file' }
+            { t: 'Submission date recorded in the case file',
+              fields: [{ k: 'dhlSubmitDate', label: 'Submission date', type: 'date', req: true }] }
         ],
         warn: { title: '⏳ Pending ≠ Approved', text: "A pending case is not cleared. Wait for DHL's formal confirmation." }
     },
@@ -1526,7 +1617,8 @@ const STEPS = [
         sub: 'Only after this confirmation may the driver start',
         items: [
             { t: 'Formal DHL acceptance received and filed' },
-            { t: 'Approval date recorded in the case file' }
+            { t: 'Approval date recorded in the case file',
+              fields: [{ k: 'dhlApprovalDate', label: 'Approval date', type: 'date', req: true }] }
         ]
     },
     {
@@ -1535,8 +1627,10 @@ const STEPS = [
         items: [
             { t: 'Start confirmed only after DHL approval' },
             { t: 'Case file complete and audit-ready' },
-            { t: 'CRC renewal reminder set (2.5 years)', s: 'Internal rule: use 2.5 years as the safer standard unless DHL confirms otherwise in writing' },
-            { t: 'Visa expiry reminder set (if applicable)' }
+            { t: 'CRC renewal reminder set (2.5 years)', s: 'Internal rule: use 2.5 years as the safer standard unless DHL confirms otherwise in writing',
+              fields: [{ k: 'crcRenewalDue', label: 'CRC renewal due', type: 'date' }] },
+            { t: 'Visa expiry reminder set (if applicable)', s: 'SOP: set the review reminder 3 months ahead of expiry',
+              fields: [{ k: 'visaReviewDate', label: 'Visa review reminder (or blank if N/A)', type: 'date' }] }
         ]
     }
 ];
@@ -1608,6 +1702,9 @@ function migrateVendor(v) {
         }
         v.ver = 3;
     }
+    if (!v.itemData) v.itemData = {};
+    if (v.dob === undefined) v.dob = '';
+    if (v.address === undefined) v.address = '';
     if (!v.interview) v.interview = {};
     // expand interview object with defaults for any missing fields
     const ivDef = {
@@ -1660,7 +1757,11 @@ function vendorDoneSteps(v) {
 
 function fmtDate(iso) {
     if (!iso) return '—';
-    return new Date(iso).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' });
+    // date-only strings must be parsed as local time, not UTC (avoids off-by-one day)
+    const d = /^\d{4}-\d{2}-\d{2}$/.test(iso)
+        ? new Date(+iso.slice(0, 4), +iso.slice(5, 7) - 1, +iso.slice(8, 10))
+        : new Date(iso);
+    return d.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' });
 }
 
 function esc(s) {
@@ -1809,6 +1910,8 @@ function openModal(editId) {
     document.getElementById('fName').value = v ? v.name : '';
     document.getElementById('fDepot').value = v ? (v.depot || '') : '';
     document.getElementById('fNationality').value = v ? (v.nationality || '') : '';
+    document.getElementById('fDob').value = v ? (v.dob || '') : '';
+    document.getElementById('fAddress').value = v ? (v.address || '') : '';
     document.getElementById('fOwner').value = v ? (v.owner || '') : '';
     document.getElementById('fStart').value = v ? (v.startDate || '') : '';
 
@@ -1835,12 +1938,13 @@ function openModal(editId) {
 function closeModal() {
     editingId = null;
     document.getElementById('modalBackdrop').classList.remove('show');
-    ['fName', 'fDepot', 'fNationality', 'fOwner'].forEach(id => {
+    ['fName', 'fDepot', 'fNationality', 'fAddress', 'fOwner'].forEach(id => {
         const el = document.getElementById(id);
         el.value = '';
         el.classList.remove('invalid');
     });
     document.getElementById('fStart').value = '';
+    document.getElementById('fDob').value = '';
     const roleSel = document.getElementById('fRole');
     roleSel.querySelectorAll('option[data-legacy]').forEach(o => o.remove());
     roleSel.selectedIndex = 0;
@@ -1867,6 +1971,8 @@ function saveVendorEdit() {
     v.startDate = document.getElementById('fStart').value || null;
     v.employment = document.getElementById('fEmployment').value;
     v.nationality = document.getElementById('fNationality').value.trim();
+    v.dob = document.getElementById('fDob').value || '';
+    v.address = document.getElementById('fAddress').value.trim();
     v.owner = document.getElementById('fOwner').value.trim();
 
     // Step 1 mirrors the form — tick anything now provided (never untick manual progress)
@@ -1895,6 +2001,8 @@ function addVendor() {
         startDate: document.getElementById('fStart').value || null,
         employment: document.getElementById('fEmployment').value,
         nationality: document.getElementById('fNationality').value.trim(),
+        dob: document.getElementById('fDob').value || '',
+        address: document.getElementById('fAddress').value.trim(),
         owner: document.getElementById('fOwner').value.trim(),
         createdAt: Date.now(),
         status: 'active',          // active | approved | rejected
@@ -1916,6 +2024,7 @@ function addVendor() {
             hrSig:'', supervisorSig:'',
             totalScore: 0, scoredAt: null
         },
+        itemData: {},
         checks: new Array(TOTAL_ITEMS).fill(false)
     };
 
@@ -1972,6 +2081,8 @@ function renderCase() {
         v.depot ? 'Depot: <b>' + esc(v.depot) + '</b>' : '',
         v.employment ? 'Status: <b>' + esc(v.employment) + '</b>' : '',
         v.nationality ? 'Nationality: <b>' + esc(v.nationality) + '</b>' : '',
+        v.dob ? 'DOB: <b>' + fmtDate(v.dob) + '</b>' : '',
+        v.address ? 'Address: <b>' + esc(v.address) + '</b>' : '',
         v.startDate ? 'Proposed start: <b>' + fmtDate(v.startDate) + '</b>' : '',
         v.owner ? 'Case owner: <b>' + esc(v.owner) + '</b>' : '',
         'Opened: <b>' + fmtDate(v.createdAt) + '</b>',
@@ -2014,12 +2125,31 @@ function renderTimeline(v) {
                       '<a class="check-link" href="' + l.url + '" target="_blank" rel="noopener" onclick="event.stopPropagation()">' + esc(l.label) + '</a>'
                   ).join('') + '</span>'
                 : '';
+            const fieldsHtml = it.fields
+                ? '<span class="item-fields" onclick="event.stopPropagation()">' + it.fields.map(f => {
+                      const val = (v.itemData || {})[f.k] || '';
+                      const reqMark = f.req ? ' <i>*</i>' : '';
+                      let input;
+                      if (f.type === 'select') {
+                          input = '<select data-fk="' + f.k + '" onchange="setItemField(\'' + f.k + '\',this)">' +
+                              '<option value="">— select —</option>' +
+                              f.opts.map(o => '<option' + (val === o ? ' selected' : '') + '>' + esc(o) + '</option>').join('') +
+                              '</select>';
+                      } else {
+                          input = '<input type="' + (f.type || 'text') + '" data-fk="' + f.k + '" value="' + esc(val) + '"' +
+                              (f.ph ? ' placeholder="' + esc(f.ph) + '"' : '') +
+                              (f.type === 'date' ? ' onchange' : ' oninput') + '="setItemField(\'' + f.k + '\',this)">';
+                      }
+                      return '<span class="if-field"><label>' + esc(f.label) + reqMark + '</label>' + input + '</span>';
+                  }).join('') + '</span>'
+                : '';
             return (
                 '<li class="check-item" onclick="toggleCheck(event,' + gi + ')">' +
                     '<input type="checkbox" data-gi="' + gi + '"' + (v.checks[gi] ? ' checked' : '') + '>' +
                     '<span class="check-text">' + esc(it.t) +
                         (it.s ? '<small>' + esc(it.s) + '</small>' : '') +
                         linksHtml +
+                        fieldsHtml +
                     '</span>' +
                 '</li>'
             );
@@ -2209,20 +2339,20 @@ function renderInterviewPanel(iv) {
         '<div class="form-grid">' +
             '<div class="field"><label>Interview date</label><input type="date" value="' + esc(iv.date||'') + '" onchange="setIvTxt(\'date\',this.value)"></div>' +
             '<div class="field"><label>Start time</label><input type="time" value="' + esc(iv.startTime||'') + '" onchange="setIvTxt(\'startTime\',this.value)"></div>' +
-            '<div class="field"><label>HR Interviewer</label><input type="text" placeholder="HR Representative" value="' + esc(iv.interviewer||'') + '" onblur="setIvTxt(\'interviewer\',this.value)"></div>' +
-            '<div class="field"><label>Direct Supervisor</label><input type="text" placeholder="Supervisor name" value="' + esc(iv.supervisorName||'') + '" onblur="setIvTxt(\'supervisorName\',this.value)"></div>' +
-            '<div class="field"><label>Location</label><input type="text" placeholder="e.g. Birmingham SC" value="' + esc(iv.location||'') + '" onblur="setIvTxt(\'location\',this.value)"></div>' +
+            '<div class="field"><label>HR Interviewer</label><input type="text" placeholder="HR Representative" value="' + esc(iv.interviewer||'') + '" oninput="setIvTxt(\'interviewer\',this.value)"></div>' +
+            '<div class="field"><label>Direct Supervisor</label><input type="text" placeholder="Supervisor name" value="' + esc(iv.supervisorName||'') + '" oninput="setIvTxt(\'supervisorName\',this.value)"></div>' +
+            '<div class="field"><label>Location</label><input type="text" placeholder="e.g. Birmingham SC" value="' + esc(iv.location||'') + '" oninput="setIvTxt(\'location\',this.value)"></div>' +
             '<div class="field"><label>Interview outcome</label><select onchange="setIvTxt(\'outcome\',this.value)">' +
                 ['','Pass','Refer — needs follow-up','Fail'].map(o => '<option value="' + esc(o) + '"' + (iv.outcome===o?' selected':'') + '>' + esc(o||'— not assessed —') + '</option>').join('') +
             '</select></div>' +
-            '<div class="field full"><label>Interview notes</label><textarea rows="4" placeholder="History discussion, driving experience, explanations given…" onblur="setIvTxt(\'notes\',this.value)">' + esc(iv.notes||'') + '</textarea></div>' +
+            '<div class="field full"><label>Interview notes</label><textarea rows="4" placeholder="History discussion, driving experience, explanations given…" oninput="setIvTxt(\'notes\',this.value)">' + esc(iv.notes||'') + '</textarea></div>' +
         '</div>' +
         '<div class="iv-sep">Observations</div>' +
         '<div class="form-grid">' +
-            '<div class="field full"><label>Strengths identified</label><textarea rows="2" placeholder="Key strengths observed…" onblur="setIvTxt(\'strengths\',this.value)">' + esc(iv.strengths||'') + '</textarea></div>' +
-            '<div class="field full"><label>Areas for development</label><textarea rows="2" placeholder="Gaps or concerns noted…" onblur="setIvTxt(\'development\',this.value)">' + esc(iv.development||'') + '</textarea></div>' +
-            '<div class="field full"><label>Questions asked by candidate</label><textarea rows="2" placeholder="Questions raised by the candidate…" onblur="setIvTxt(\'candidateQuestions\',this.value)">' + esc(iv.candidateQuestions||'') + '</textarea></div>' +
-            '<div class="field full"><label>Overall impression</label><textarea rows="2" placeholder="General assessment and impression…" onblur="setIvTxt(\'overall\',this.value)">' + esc(iv.overall||'') + '</textarea></div>' +
+            '<div class="field full"><label>Strengths identified</label><textarea rows="2" placeholder="Key strengths observed…" oninput="setIvTxt(\'strengths\',this.value)">' + esc(iv.strengths||'') + '</textarea></div>' +
+            '<div class="field full"><label>Areas for development</label><textarea rows="2" placeholder="Gaps or concerns noted…" oninput="setIvTxt(\'development\',this.value)">' + esc(iv.development||'') + '</textarea></div>' +
+            '<div class="field full"><label>Questions asked by candidate</label><textarea rows="2" placeholder="Questions raised by the candidate…" oninput="setIvTxt(\'candidateQuestions\',this.value)">' + esc(iv.candidateQuestions||'') + '</textarea></div>' +
+            '<div class="field full"><label>Overall impression</label><textarea rows="2" placeholder="General assessment and impression…" oninput="setIvTxt(\'overall\',this.value)">' + esc(iv.overall||'') + '</textarea></div>' +
         '</div>' +
         '</div>';
 
@@ -2244,7 +2374,7 @@ function renderInterviewPanel(iv) {
         '<div class="iv-h">Document Collection</div><div class="iv-sub">Original + photocopy required · record expiry dates where applicable · ' + docDone + '/12 collected</div>' +
         '<ul class="iv-checks">' + DOC_ITEMS.map((_,i) => ivDocRow(i, iv)).join('') + '</ul>' +
         '<div class="iv-sep">Verification Notes</div>' +
-        '<div class="field full"><textarea rows="7" placeholder="ID/Passport: ___ Expiry: ___&#10;Driving Licence: ___ Expiry: ___&#10;Endorsements: ___&#10;DBS Date: ___ Status: ___&#10;Right to Work: ___&#10;Any Concerns: ___" onblur="setIvTxt(\'docNotes\',this.value)">' + esc(iv.docNotes||'') + '</textarea></div>' +
+        '<div class="field full"><textarea rows="7" placeholder="ID/Passport: ___ Expiry: ___&#10;Driving Licence: ___ Expiry: ___&#10;Endorsements: ___&#10;DBS Date: ___ Status: ___&#10;Right to Work: ___&#10;Any Concerns: ___" oninput="setIvTxt(\'docNotes\',this.value)">' + esc(iv.docNotes||'') + '</textarea></div>' +
         '</div>';
 
     // ── TAB 4: RED FLAGS ─────────────────────────────────────────
@@ -2255,7 +2385,7 @@ function renderInterviewPanel(iv) {
         '<ul class="iv-checks">' + [0,1,2,3,4,5,6,7].map(i => ivChk('flag',i,iv.redFlags[i])).join('') + '</ul>' +
         '<div class="iv-sep">Performance Concerns</div>' +
         '<ul class="iv-checks">' + [8,9,10,11,12,13].map(i => ivChk('flag',i,iv.redFlags[i])).join('') + '</ul>' +
-        '<div class="field full" style="margin-top:12px"><label>Red flag notes</label><textarea rows="3" placeholder="Details on any flags raised…" onblur="setIvTxt(\'redFlagNotes\',this.value)">' + esc(iv.redFlagNotes||'') + '</textarea></div>' +
+        '<div class="field full" style="margin-top:12px"><label>Red flag notes</label><textarea rows="3" placeholder="Details on any flags raised…" oninput="setIvTxt(\'redFlagNotes\',this.value)">' + esc(iv.redFlagNotes||'') + '</textarea></div>' +
         '</div>';
 
     // ── TAB 5: DECISION ──────────────────────────────────────────
@@ -2280,12 +2410,12 @@ function renderInterviewPanel(iv) {
         '<div class="field full"><label>Formal decision</label><select onchange="setIvDecision(this.value)">' +
             decOptions.map(d => '<option value="' + esc(d.v) + '"' + (iv.decision===d.v?' selected':'') + '>' + esc(d.l) + '</option>').join('') +
         '</select></div>' +
-        (iv.decision==='hire-cond' ? '<div class="field full" style="margin-top:10px"><label>Conditions / requirements</label><textarea rows="3" placeholder="Specify training, probation, or retest requirements…" onblur="setIvTxt(\'conditions\',this.value)">' + esc(iv.conditions||'') + '</textarea></div>' : '') +
+        (iv.decision==='hire-cond' ? '<div class="field full" style="margin-top:10px"><label>Conditions / requirements</label><textarea rows="3" placeholder="Specify training, probation, or retest requirements…" oninput="setIvTxt(\'conditions\',this.value)">' + esc(iv.conditions||'') + '</textarea></div>' : '') +
         '<div class="iv-sep">Next Steps</div>' +
         '<ul class="iv-checks">' + NEXT_ITEMS.map((_,i) => ivChk('next',i,iv.nextSteps[i])).join('') + '</ul>' +
         '<div class="form-grid" style="margin-top:14px">' +
-            '<div class="field"><label>HR signature</label><input type="text" placeholder="Name / initials" value="' + esc(iv.hrSig||'') + '" onblur="setIvTxt(\'hrSig\',this.value)"></div>' +
-            '<div class="field"><label>Supervisor signature</label><input type="text" placeholder="Name / initials" value="' + esc(iv.supervisorSig||'') + '" onblur="setIvTxt(\'supervisorSig\',this.value)"></div>' +
+            '<div class="field"><label>HR signature</label><input type="text" placeholder="Name / initials" value="' + esc(iv.hrSig||'') + '" oninput="setIvTxt(\'hrSig\',this.value)"></div>' +
+            '<div class="field"><label>Supervisor signature</label><input type="text" placeholder="Name / initials" value="' + esc(iv.supervisorSig||'') + '" oninput="setIvTxt(\'supervisorSig\',this.value)"></div>' +
         '</div>' +
         '</div>';
 
@@ -2384,13 +2514,47 @@ function setInterview(field, value) {
     if (field === 'outcome') renderCase();
 }
 
+function itemByGi(gi) {
+    let idx = 0;
+    for (const s of STEPS) {
+        if (gi < idx + s.items.length) return s.items[gi - idx];
+        idx += s.items.length;
+    }
+    return null;
+}
+
 function toggleCheck(e, gi) {
+    if (e.target.closest && e.target.closest('.item-fields')) return; // typing in a field never toggles
     const v = getVendor(currentId);
     const box = document.querySelector('#timeline input[data-gi="' + gi + '"]');
     if (e.target !== box) box.checked = !box.checked;
+
+    // mandatory data: an item with required fields cannot be ticked until they are filled
+    if (box.checked) {
+        const it = itemByGi(gi);
+        const missing = ((it && it.fields) || []).filter(f => f.req && !((v.itemData || {})[f.k] || '').trim());
+        if (missing.length) {
+            box.checked = false;
+            missing.forEach(f => {
+                const el = document.querySelector('#timeline [data-fk="' + f.k + '"]');
+                if (el) el.classList.add('invalid');
+            });
+            alert('This item requires data before it can be ticked:\n\n• ' + missing.map(f => f.label).join('\n• '));
+            return;
+        }
+    }
+
     v.checks[gi] = box.checked;
     saveStore();
     renderCase();
+}
+
+function setItemField(key, el) {
+    const v = getVendor(currentId);
+    if (!v.itemData) v.itemData = {};
+    v.itemData[key] = el.value;
+    el.classList.remove('invalid');
+    saveStore();
 }
 
 function expandAll() {
@@ -2403,8 +2567,11 @@ function expandAll() {
 function decide(status) {
     const v = getVendor(currentId);
     const { pct } = vendorProgress(v);
-    if (status === 'approved' && pct < 100 &&
-        !confirm('The checklist is at ' + pct + '%. Approve anyway?\n\nGolden Rule: only approve after full vetting and formal DHL confirmation.')) return;
+    if (status === 'approved' && pct < 100) {
+        alert('The checklist is mandatory — currently at ' + pct + '%.\n\nEvery item must be ticked (and its required fields filled) before the case can be approved.\n\nGolden Rule: only approve after full vetting and formal DHL confirmation.');
+        return;
+    }
+    if (status === 'approved' && !confirm('Confirm DHL approval for ' + v.name + '?')) return;
     if (status === 'rejected' && !confirm('Mark ' + v.name + ' as rejected?')) return;
     v.status = status;
     v.decisionAt = Date.now();
@@ -2437,97 +2604,199 @@ function deleteVendor() {
 }
 
 /* =====================================================
-   Export
+   Export — structured blocks rendered to PDF (jsPDF),
+   falling back to plain text when the library is absent
 ===================================================== */
-function exportReport() {
-    const v = getVendor(currentId);
+function fieldDisplay(f, val) {
+    return f.type === 'date' ? fmtDate(val) : val;
+}
+
+function decisionLabel(d) {
+    return d === 'hire-strong' ? 'HIRE — Strong Candidate'
+        : d === 'hire-cond' ? 'HIRE — Conditional'
+        : d === 'second' ? 'Second Interview Required'
+        : d === 'decline' ? 'DECLINE'
+        : '— not yet decided —';
+}
+
+function reportBlocks(v) {
     const { done, pct } = vendorProgress(v);
     const st = v.status === 'approved' ? 'APPROVED (' + fmtDate(v.decisionAt) + ')'
         : v.status === 'rejected' ? 'REJECTED (' + fmtDate(v.decisionAt) + ')'
         : 'IN PROGRESS';
-
-    let out = '=== DHL DRIVER VETTING — CASE REPORT ===\n';
-    out += 'Vendor: ' + v.name + '\n';
-    out += 'Role: ' + (v.role || '—') + ' · Depot: ' + (v.depot || '—') + ' · Employment: ' + (v.employment || '—') + '\n';
-    out += 'Nationality: ' + (v.nationality || '—') + ' · Proposed start: ' + fmtDate(v.startDate) + '\n';
-    out += 'Case owner: ' + (v.owner || '—') + ' · Opened: ' + fmtDate(v.createdAt) + '\n';
-    out += 'Status: ' + st + '\n';
-    out += 'Generated: ' + new Date().toLocaleString('en-GB') + '\n';
-    out += 'Overall progress: ' + pct + '% (' + done + '/' + TOTAL_ITEMS + ' items) · Steps complete: ' + vendorDoneSteps(v) + '/' + STEPS.length + '\n';
-
     const iv = v.interview || {};
     const total = calcIvTotal(iv); const auto = autoDecision(total, iv);
-    out += '\n--- FACE-TO-FACE INTERVIEW (SUMMARY) ---\n';
-    out += 'Date: ' + (iv.date ? fmtDate(iv.date) : '—') + (iv.startTime ? ' ' + iv.startTime : '') + '\n';
-    out += 'Outcome: ' + (iv.outcome||'not assessed') + '\n';
-    out += 'Score: ' + total + '/50 · Recommendation: ' + auto.label + '\n';
-    if (iv.decision) out += 'Formal decision: ' + (iv.decision==='hire-strong'?'HIRE — Strong':iv.decision==='hire-cond'?'HIRE — Conditional':iv.decision==='second'?'Second Interview':iv.decision==='decline'?'DECLINE':'—') + '\n';
-    out += 'Full interview notes are issued as a separate export (Export interview).\n\n';
+    const blocks = [];
+
+    blocks.push({ h: 'Case Details', lines: [
+        { text: 'Driver / Vendor: ' + v.name, bold: true },
+        { text: 'Role: ' + (v.role || '—') + ' · Depot: ' + (v.depot || '—') + ' · Employment: ' + (v.employment || '—') },
+        { text: 'Date of birth: ' + (v.dob ? fmtDate(v.dob) : '—') + ' · Nationality: ' + (v.nationality || '—') },
+        { text: 'Current address: ' + (v.address || '—') },
+        { text: 'Proposed start: ' + fmtDate(v.startDate) + ' · Case owner: ' + (v.owner || '—') + ' · Opened: ' + fmtDate(v.createdAt) },
+        { text: 'Status: ' + st, bold: true },
+        { text: 'Overall progress: ' + pct + '% (' + done + '/' + TOTAL_ITEMS + ' items) · Steps complete: ' + vendorDoneSteps(v) + '/' + STEPS.length }
+    ]});
+
+    blocks.push({ h: 'Face-to-Face Interview (Summary)', lines: [
+        { text: 'Date: ' + (iv.date ? fmtDate(iv.date) : '—') + (iv.startTime ? ' ' + iv.startTime : '') },
+        { text: 'Outcome: ' + (iv.outcome || 'not assessed') },
+        { text: 'Score: ' + total + '/50 · Recommendation: ' + auto.label, bold: true },
+        { text: 'Formal decision: ' + decisionLabel(iv.decision) },
+        { text: 'Full interview notes are issued as a separate export (Export interview).', dim: true }
+    ]});
 
     let idx = 0;
     STEPS.forEach((step, si) => {
         const sliceDone = v.checks.slice(idx, idx + step.items.length).filter(Boolean).length;
-        out += 'STEP ' + (si + 1) + ' — ' + step.title + ' [' + sliceDone + '/' + step.items.length + ']\n';
+        const lines = [];
         step.items.forEach((it, ii) => {
-            out += '  ' + (v.checks[idx + ii] ? '[x] ' : '[ ] ') + it.t + '\n';
+            lines.push({ text: (v.checks[idx + ii] ? '[x] ' : '[ ] ') + it.t });
+            (it.fields || []).forEach(f => {
+                const val = (v.itemData || {})[f.k];
+                if (val) lines.push({ text: f.label + ': ' + fieldDisplay(f, val), indent: true, dim: true });
+            });
         });
-        out += '\n';
+        blocks.push({ h: 'Step ' + (si + 1) + ' — ' + step.title + ' [' + sliceDone + '/' + step.items.length + ']', lines });
         idx += step.items.length;
     });
 
-    downloadText(out, 'DHL_Vetting_' + v.name.replace(/\s+/g, '_') + '_' + new Date().toISOString().slice(0, 10) + '.txt');
+    return blocks;
+}
+
+function interviewBlocks(v) {
+    const iv = v.interview || {};
+    const total = calcIvTotal(iv); const auto = autoDecision(total, iv);
+    const blocks = [];
+
+    blocks.push({ h: 'Candidate', lines: [
+        { text: v.name, bold: true },
+        { text: 'Role: ' + (v.role || '—') + ' · Depot: ' + (v.depot || '—') },
+        { text: 'Date of birth: ' + (v.dob ? fmtDate(v.dob) : '—') + ' · Nationality: ' + (v.nationality || '—') }
+    ]});
+
+    blocks.push({ h: 'Interview Record', lines: [
+        { text: 'Date: ' + (iv.date ? fmtDate(iv.date) : '—') + (iv.startTime ? ' ' + iv.startTime : '') },
+        { text: 'HR Interviewer: ' + (iv.interviewer || '—') + ' · Direct Supervisor: ' + (iv.supervisorName || '—') },
+        { text: 'Location: ' + (iv.location || '—') },
+        { text: 'Outcome: ' + (iv.outcome || 'not assessed'), bold: true }
+    ]});
+
+    const scoreLines = [{ text: 'COMPETENCY SCORES', bold: true }];
+    COMP_ITEMS.forEach(item => scoreLines.push({ text: item.label + ': ' + (iv.comp[item.k] || '—') + '/5' + (iv.comp[item.k] ? ' — ' + item.desc[iv.comp[item.k] - 1] : ''), indent: true }));
+    scoreLines.push({ text: 'PRACTICAL TESTS', bold: true });
+    PRAC_ITEMS.forEach(item => scoreLines.push({ text: item.label + ': ' + (iv.prac[item.k] || '—') + '/5' + (iv.prac[item.k] ? ' — ' + item.desc[iv.prac[item.k] - 1] : ''), indent: true }));
+    scoreLines.push({ text: 'TOTAL SCORE: ' + total + '/50 · Recommendation: ' + auto.label, bold: true });
+    blocks.push({ h: 'Scoring', lines: scoreLines });
+
+    blocks.push({ h: 'Notes & Observations', lines: [
+        { text: 'Interview notes: ' + (iv.notes || '—') },
+        { text: 'Strengths: ' + (iv.strengths || '—') },
+        { text: 'Areas for development: ' + (iv.development || '—') },
+        { text: 'Questions asked by candidate: ' + (iv.candidateQuestions || '—') },
+        { text: 'Overall impression: ' + (iv.overall || '—') }
+    ]});
+
+    const docDone = iv.docChecks.filter(Boolean).length;
+    const docLines = DOC_ITEMS.map((d, i) => {
+        const exp = iv.docExpiry && iv.docExpiry[i];
+        return { text: (iv.docChecks[i] ? '[x] ' : '[ ] ') + d + (exp ? ' — expiry: ' + fmtDate(exp) : '') };
+    });
+    if (iv.docNotes) docLines.push({ text: 'Verification notes: ' + iv.docNotes });
+    blocks.push({ h: 'Document Collection [' + docDone + '/' + DOC_ITEMS.length + ']', lines: docLines });
+
+    const flagged = REDFLAG_ITEMS.filter((_, i) => iv.redFlags[i]);
+    const flagLines = flagged.length ? flagged.map(f => ({ text: '[!] ' + f, bold: true })) : [{ text: 'None raised' }];
+    if (iv.redFlagNotes) flagLines.push({ text: 'Red flag notes: ' + iv.redFlagNotes });
+    blocks.push({ h: 'Red Flags', lines: flagLines });
+
+    const decLines = [
+        { text: 'Formal decision: ' + decisionLabel(iv.decision), bold: true }
+    ];
+    if (iv.conditions) decLines.push({ text: 'Conditions: ' + iv.conditions });
+    const next = NEXT_ITEMS.filter((_, i) => iv.nextSteps[i]);
+    if (next.length) decLines.push({ text: 'Next steps: ' + next.join('; ') });
+    decLines.push({ text: 'Signed: HR = ' + (iv.hrSig || '—') + ' · Supervisor = ' + (iv.supervisorSig || '—') });
+    blocks.push({ h: 'Decision', lines: decLines });
+
+    return blocks;
+}
+
+function exportReport() {
+    const v = getVendor(currentId);
+    renderDoc('BA EXPRESS — DRIVER VETTING CASE REPORT', reportBlocks(v),
+        'Vetting_Report_' + v.name.replace(/\s+/g, '_') + '_' + new Date().toISOString().slice(0, 10));
 }
 
 function exportInterview() {
     const v = getVendor(currentId);
-    const iv = v.interview || {};
-    const total = calcIvTotal(iv); const auto = autoDecision(total, iv);
+    renderDoc('BA EXPRESS — FACE-TO-FACE INTERVIEW NOTES', interviewBlocks(v),
+        'Interview_Notes_' + v.name.replace(/\s+/g, '_') + '_' + new Date().toISOString().slice(0, 10));
+}
 
-    let out = '=== FACE-TO-FACE INTERVIEW NOTES ===\n';
-    out += 'Candidate: ' + v.name + '\n';
-    out += 'Role: ' + (v.role || '—') + ' · Depot: ' + (v.depot || '—') + '\n';
-    out += 'Generated: ' + new Date().toLocaleString('en-GB') + '\n';
-    out += '\n--- INTERVIEW RECORD ---\n';
-    out += 'Date: ' + (iv.date ? fmtDate(iv.date) : '—') + (iv.startTime ? ' ' + iv.startTime : '') + '\n';
-    out += 'HR Interviewer: ' + (iv.interviewer||'—') + ' · Direct Supervisor: ' + (iv.supervisorName||'—') + '\n';
-    out += 'Location: ' + (iv.location||'—') + '\n';
-    out += 'Outcome: ' + (iv.outcome||'not assessed') + '\n';
+function renderDoc(title, blocks, basename) {
+    if (window.jspdf && window.jspdf.jsPDF) renderPdf(title, blocks, basename + '.pdf');
+    else downloadText(blocksToTxt(title, blocks), basename + '.txt');
+}
 
-    out += '\n--- SCORING ---\n';
-    out += 'COMPETENCY SCORES:\n';
-    COMP_ITEMS.forEach(item => out += '  ' + item.label + ': ' + (iv.comp[item.k]||'—') + '/5' + (iv.comp[item.k] ? ' — ' + item.desc[iv.comp[item.k]-1] : '') + '\n');
-    out += 'PRACTICAL TESTS:\n';
-    PRAC_ITEMS.forEach(item => out += '  ' + item.label + ': ' + (iv.prac[item.k]||'—') + '/5' + (iv.prac[item.k] ? ' — ' + item.desc[iv.prac[item.k]-1] : '') + '\n');
-    out += 'TOTAL SCORE: ' + total + '/50 · Recommendation: ' + auto.label + '\n';
+// jsPDF standard fonts are cp1252 — strip glyphs that would render as garbage
+function pdfSafe(s) {
+    return String(s).replace(/[^\x20-\x7E -ÿ–—‘’“”]/g, '');
+}
 
-    out += '\n--- NOTES & OBSERVATIONS ---\n';
-    out += 'Interview notes: ' + (iv.notes||'—') + '\n';
-    out += 'Strengths: ' + (iv.strengths||'—') + '\n';
-    out += 'Areas for development: ' + (iv.development||'—') + '\n';
-    out += 'Questions asked by candidate: ' + (iv.candidateQuestions||'—') + '\n';
-    out += 'Overall impression: ' + (iv.overall||'—') + '\n';
+function renderPdf(title, blocks, filename) {
+    const { jsPDF } = window.jspdf;
+    const doc = new jsPDF({ unit: 'pt', format: 'a4' });
+    const W = doc.internal.pageSize.getWidth();
+    const H = doc.internal.pageSize.getHeight();
+    const M = 48;
+    let y = M;
 
-    const docDone = iv.docChecks.filter(Boolean).length;
-    out += '\n--- DOCUMENT COLLECTION [' + docDone + '/' + DOC_ITEMS.length + '] ---\n';
-    DOC_ITEMS.forEach((d,i) => {
-        const exp = iv.docExpiry && iv.docExpiry[i];
-        out += '  ' + (iv.docChecks[i] ? '[x] ' : '[ ] ') + d + (exp ? ' — expiry: ' + fmtDate(exp) : '') + '\n';
+    const brandBar = () => { doc.setFillColor(214, 55, 44); doc.rect(0, 0, W, 6, 'F'); };
+    const ensure = h => { if (y + h > H - M) { doc.addPage(); brandBar(); y = M; } };
+
+    brandBar();
+    y += 6;
+    doc.setFont('helvetica', 'bold'); doc.setFontSize(15); doc.setTextColor(34, 48, 63);
+    doc.text(pdfSafe(title), M, y); y += 15;
+    doc.setFont('helvetica', 'normal'); doc.setFontSize(8.5); doc.setTextColor(125, 135, 148);
+    doc.text('Generated ' + new Date().toLocaleString('en-GB') + ' · BA Express Compliance · SOP v1.0', M, y); y += 8;
+
+    blocks.forEach(b => {
+        if (b.h) {
+            ensure(40);
+            y += 16;
+            doc.setFont('helvetica', 'bold'); doc.setFontSize(10.5); doc.setTextColor(46, 65, 86);
+            doc.text(pdfSafe(b.h.toUpperCase()), M, y);
+            y += 5;
+            doc.setDrawColor(214, 55, 44); doc.setLineWidth(.8);
+            doc.line(M, y, W - M, y);
+            y += 13;
+        }
+        (b.lines || []).forEach(l => {
+            doc.setFont('helvetica', l.bold ? 'bold' : 'normal');
+            doc.setFontSize(9.5);
+            if (l.dim) doc.setTextColor(125, 135, 148); else doc.setTextColor(45, 57, 70);
+            const ind = l.indent ? 16 : 0;
+            doc.splitTextToSize(pdfSafe(l.text), W - 2 * M - ind).forEach(wl => {
+                ensure(13);
+                doc.text(wl, M + ind, y);
+                y += 13;
+            });
+        });
     });
-    if (iv.docNotes) out += 'Verification notes: ' + iv.docNotes + '\n';
 
-    const flagged = REDFLAG_ITEMS.filter((_,i) => iv.redFlags[i]);
-    out += '\n--- RED FLAGS ---\n';
-    out += flagged.length ? flagged.map(f => '  🚩 ' + f).join('\n') + '\n' : '  None raised\n';
-    if (iv.redFlagNotes) out += 'Red flag notes: ' + iv.redFlagNotes + '\n';
+    doc.save(filename);
+}
 
-    out += '\n--- DECISION ---\n';
-    out += 'Formal decision: ' + (iv.decision==='hire-strong'?'HIRE — Strong Candidate':iv.decision==='hire-cond'?'HIRE — Conditional':iv.decision==='second'?'Second Interview Required':iv.decision==='decline'?'DECLINE':'— not yet decided —') + '\n';
-    if (iv.conditions) out += 'Conditions: ' + iv.conditions + '\n';
-    const next = NEXT_ITEMS.filter((_,i) => iv.nextSteps[i]);
-    if (next.length) out += 'Next steps: ' + next.join('; ') + '\n';
-    out += 'Signed: HR=' + (iv.hrSig||'—') + ' · Supervisor=' + (iv.supervisorSig||'—') + '\n';
-
-    downloadText(out, 'Interview_Notes_' + v.name.replace(/\s+/g, '_') + '_' + new Date().toISOString().slice(0, 10) + '.txt');
+function blocksToTxt(title, blocks) {
+    let out = '=== ' + title + ' ===\n';
+    out += 'Generated: ' + new Date().toLocaleString('en-GB') + '\n';
+    blocks.forEach(b => {
+        if (b.h) out += '\n--- ' + b.h.toUpperCase() + ' ---\n';
+        (b.lines || []).forEach(l => { out += (l.indent ? '    ' : '') + l.text + '\n'; });
+    });
+    return out;
 }
 
 function downloadText(text, filename) {
