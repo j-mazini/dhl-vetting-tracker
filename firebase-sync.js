@@ -133,7 +133,7 @@ async function startFirebase() {
 
         async viewDocument(path, fileName) {
             if (!user) throw new Error("Sign in before viewing documents.");
-            const blob = await storageSdk.getBlob(storageSdk.ref(storage, path));
+            const blob = await adapter.getDocumentBlob(path);
             const url = URL.createObjectURL(blob);
             const opened = window.open(url, "_blank", "noopener");
             if (!opened) {
@@ -145,6 +145,11 @@ async function startFirebase() {
                 link.click();
             }
             setTimeout(() => URL.revokeObjectURL(url), 60000);
+        },
+
+        async getDocumentBlob(path) {
+            if (!user) throw new Error("Sign in before accessing documents.");
+            return storageSdk.getBlob(storageSdk.ref(storage, path));
         },
 
         async deleteDocument(path) {

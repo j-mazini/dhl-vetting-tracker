@@ -8,6 +8,7 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Montserrat:wght@700;800;900&display=swap" rel="stylesheet">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
 <script src="firebase-config.js"></script>
 <style>
     :root {
@@ -1866,7 +1867,7 @@
         <button class="btn btn-ghost" onclick="resetCase()">↺ Reset checklist</button>
         <button class="btn btn-ghost" onclick="expandAll()">Expand all</button>
         <button class="btn btn-ghost" onclick="exportInterview()">🎤 Export interview</button>
-        <button class="btn btn-main" onclick="exportReport()">↓ Export report</button>
+        <button class="btn btn-main" id="exportReportButton" onclick="exportReport()">↓ Export report</button>
     </div>
 </footer>
 
@@ -3611,6 +3612,30 @@ function reportBlocks(v) {
         { text: 'Full interview notes are issued as a separate export (Export interview).', dim: true }
     ]});
 
+    const uploadedDocuments = Object.values(v.documents || {});
+    const documentLines = [];
+    STEPS.forEach(step => step.items.forEach(item => {
+        if (!item.doc) return;
+        const document = (v.documents || {})[item.doc.k];
+        if (!document) {
+            documentLines.push({ text: '[ ] ' + item.doc.label + ': not uploaded', dim: true });
+            return;
+        }
+        const uploader = document.uploadedBy
+            ? document.uploadedBy.name || document.uploadedBy.email
+            : 'Unknown user';
+        documentLines.push({
+            text: '[x] ' + document.fileName + ' · ' + formatFileSize(document.size) +
+                ' · uploaded ' + fmtDateTime(document.uploadedAt) + ' by ' + uploader,
+            bold: true
+        });
+    }));
+    documentLines.unshift({
+        text: uploadedDocuments.length + ' document(s) attached at the end of this report.',
+        bold: true
+    });
+    blocks.push({ h: 'Uploaded Documents', lines: documentLines });
+
     let idx = 0;
     STEPS.forEach((step, si) => {
         const sliceDone = v.checks.slice(idx, idx + step.items.length).filter(Boolean).length;
@@ -3691,10 +3716,45 @@ function interviewBlocks(v) {
     return blocks;
 }
 
-function exportReport() {
+async function exportReport() {
     const v = getVendor(currentId);
-    renderDoc('BA EXPRESS — DRIVER VETTING CASE REPORT', reportBlocks(v),
-        'Vetting_Report_' + v.name.replace(/\s+/g, '_') + '_' + new Date().toISOString().slice(0, 10));
+    const button = document.getElementById('exportReportButton');
+    const documents = Object.values(v.documents || {}).filter(document => document.path);
+    const attachments = [];
+    const failures = [];
+    if (button) {
+        button.disabled = true;
+        button.textContent = documents.length ? 'Preparing documents…' : 'Preparing report…';
+    }
+
+    try {
+        for (let i = 0; i < documents.length; i++) {
+            const document = documents[i];
+            if (button) button.textContent = 'Loading document ' + (i + 1) + '/' + documents.length + '…';
+            try {
+                const blob = await cloudAdapter.getDocumentBlob(document.path);
+                attachments.push({ ...document, blob });
+            } catch (error) {
+                console.error('Could not attach document:', document.fileName, error);
+                failures.push(document.fileName);
+            }
+        }
+
+        await renderDoc('BA EXPRESS — DRIVER VETTING CASE REPORT', reportBlocks(v),
+            'Vetting_Report_' + v.name.replace(/\s+/g, '_') + '_' + new Date().toISOString().slice(0, 10),
+            attachments);
+        if (failures.length) {
+            alert('The report was exported, but these documents could not be attached:\n\n' + failures.join('\n'));
+        }
+    } catch (error) {
+        console.error('Report export failed:', error);
+        alert('The report could not be exported: ' + (error.message || error));
+    } finally {
+        if (button) {
+            button.disabled = false;
+            button.textContent = '↓ Export report';
+        }
+    }
 }
 
 function exportInterview() {
@@ -3703,8 +3763,8 @@ function exportInterview() {
         'Interview_Notes_' + v.name.replace(/\s+/g, '_') + '_' + new Date().toISOString().slice(0, 10));
 }
 
-function renderDoc(title, blocks, basename) {
-    if (window.jspdf && window.jspdf.jsPDF) renderPdf(title, blocks, basename + '.pdf');
+async function renderDoc(title, blocks, basename, attachments = []) {
+    if (window.jspdf && window.jspdf.jsPDF) await renderPdf(title, blocks, basename + '.pdf', attachments);
     else downloadText(blocksToTxt(title, blocks), basename + '.txt');
 }
 
@@ -3713,7 +3773,7 @@ function pdfSafe(s) {
     return String(s).replace(/[^\x20-\x7E -ÿ–—‘’“”]/g, '');
 }
 
-function renderPdf(title, blocks, filename) {
+async function renderPdf(title, blocks, filename, attachments = []) {
     const { jsPDF } = window.jspdf;
     const doc = new jsPDF({ unit: 'pt', format: 'a4' });
     const W = doc.internal.pageSize.getWidth();
@@ -3755,7 +3815,87 @@ function renderPdf(title, blocks, filename) {
         });
     });
 
+    for (const attachment of attachments) {
+        try {
+            await appendDocumentToPdf(doc, attachment, { width: W, height: H, margin: M, brandBar });
+        } catch (error) {
+            console.error('Could not render document in report:', attachment.fileName, error);
+            doc.addPage();
+            brandBar();
+            doc.setFont('helvetica', 'bold');
+            doc.setFontSize(10);
+            doc.setTextColor(191, 29, 35);
+            doc.text(pdfSafe('DOCUMENT COULD NOT BE RENDERED: ' + attachment.fileName), M, M);
+        }
+    }
+
     doc.save(filename);
+}
+
+async function appendDocumentToPdf(doc, attachment, page) {
+    const type = attachment.contentType || attachment.blob.type || '';
+    const title = 'DOCUMENT: ' + attachment.fileName;
+    if (type === 'application/pdf') {
+        if (!window.pdfjsLib) throw new Error('PDF renderer is unavailable.');
+        window.pdfjsLib.GlobalWorkerOptions.workerSrc =
+            'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+        const source = await attachment.blob.arrayBuffer();
+        const pdf = await window.pdfjsLib.getDocument({ data: source }).promise;
+        for (let pageNumber = 1; pageNumber <= pdf.numPages; pageNumber++) {
+            const pdfPage = await pdf.getPage(pageNumber);
+            const viewport = pdfPage.getViewport({ scale: 1.5 });
+            const canvas = document.createElement('canvas');
+            canvas.width = viewport.width;
+            canvas.height = viewport.height;
+            await pdfPage.render({
+                canvasContext: canvas.getContext('2d'),
+                viewport
+            }).promise;
+            addAttachmentPage(doc, canvas.toDataURL('image/jpeg', .9),
+                title + ' · page ' + pageNumber + '/' + pdf.numPages, page);
+        }
+        return;
+    }
+
+    if (type === 'image/jpeg' || type === 'image/png') {
+        const dataUrl = await blobToDataUrl(attachment.blob);
+        addAttachmentPage(doc, dataUrl, title, page);
+    }
+}
+
+function addAttachmentPage(doc, dataUrl, title, page) {
+    doc.addPage();
+    page.brandBar();
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(10);
+    doc.setTextColor(46, 65, 86);
+    doc.text(pdfSafe(title), page.margin, page.margin);
+
+    const image = doc.getImageProperties(dataUrl);
+    const maxWidth = page.width - page.margin * 2;
+    const maxHeight = page.height - page.margin * 2 - 24;
+    const scale = Math.min(maxWidth / image.width, maxHeight / image.height);
+    const width = image.width * scale;
+    const height = image.height * scale;
+    doc.addImage(
+        dataUrl,
+        image.fileType,
+        (page.width - width) / 2,
+        page.margin + 18,
+        width,
+        height,
+        undefined,
+        'FAST'
+    );
+}
+
+function blobToDataUrl(blob) {
+    return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(reader.result);
+        reader.onerror = reject;
+        reader.readAsDataURL(blob);
+    });
 }
 
 function blocksToTxt(title, blocks) {
