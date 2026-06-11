@@ -10,6 +10,8 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
 <script src="firebase-config.js"></script>
+<script src="https://apis.google.com/js/api.js"></script>
+<script src="google-drive-sync.js"></script>
 <style>
     :root {
         --ba-red: #bf1d23;
@@ -2929,9 +2931,11 @@ function renderDocumentUpload(v, documentType) {
 
     const rows = files.map((saved, i) => {
         const uploader = saved.uploadedBy ? saved.uploadedBy.name || saved.uploadedBy.email : '';
+        const source = saved.driveId ? '☁️ Drive' : '📦 Storage';
         return '<span class="document-row">' +
-            '<span class="document-name"><b>' + esc(saved.fileName) + '</b><br>' +
-                esc(formatFileSize(saved.size)) + ' · ' + esc(fmtDateTime(saved.uploadedAt)) +
+            '<span class="document-name"><b>' + esc(saved.fileName) + '</b> ' + source + '<br>' +
+                (saved.size ? esc(formatFileSize(saved.size)) + ' · ' : '') +
+                esc(fmtDateTime(saved.uploadedAt)) +
                 (uploader ? ' · ' + esc(uploader) : '') + '</span>' +
             '<button type="button" class="document-action view" onclick="viewDocument(\'' + esc(documentType.k) + '\',' + i + ')">View</button>' +
             '<button type="button" class="document-action" onclick="removeDocument(\'' + esc(documentType.k) + '\',' + i + ')">Delete</button>' +
@@ -2941,11 +2945,14 @@ function renderDocumentUpload(v, documentType) {
     return '<span class="document-upload" data-document-key="' + esc(documentType.k) + '" onclick="event.stopPropagation()">' +
         '<input id="' + inputId + '" type="file" hidden multiple accept=".pdf,.jpg,.jpeg,.png,application/pdf,image/jpeg,image/png" ' +
             'onchange="uploadDocument(\'' + esc(documentType.k) + '\',\'' + esc(documentType.label) + '\',this)">' +
-        (rows || '<span class="document-name">No file uploaded. Files are saved as <b>' +
-            esc(documentType.label + ' ' + v.name) + '.[pdf/jpg/png]</b></span>') +
+        (rows || '<span class="document-name">📎 No documents. Upload directly or reference Google Drive.<br><small>Storage: Files saved to our servers. Drive: Reference your Google Drive files.</small></span>') +
         '<span class="document-progress" id="document-progress-' + esc(documentType.k) + '"></span>' +
-        '<button type="button" class="document-action" onclick="document.getElementById(\'' + inputId + '\').click()">' +
-            (files.length ? '+ Add file' : 'Upload') + '</button>' +
+        '<div style="display:flex; gap:8px; margin-top:8px;">' +
+            '<button type="button" class="document-action" onclick="document.getElementById(\'' + inputId + '\').click()" title="Upload to BA Express servers">' +
+                (files.length ? '+ Upload' : 'Upload to Storage') + '</button>' +
+            '<button type="button" class="document-action" style="background: linear-gradient(135deg, #4285f4 0%, #34a853 100%);" onclick="openGoogleDrivePicker(\'' + esc(documentType.label) + '\', function(file) { addDriveDocument(\'' + esc(documentType.k) + '\',\'' + esc(documentType.label) + '\', file); })" title="Link file from Google Drive">' +
+                (files.length ? '+ Google Drive' : 'Google Drive') + '</button>' +
+        '</div>' +
         '</span>';
 }
 
@@ -3091,11 +3098,99 @@ async function viewDocument(key, idx) {
     const v = getVendor(currentId);
     const saved = v && docList(v, key)[idx || 0];
     if (!saved || !cloudAdapter) return;
+
     try {
-        await cloudAdapter.viewDocument(saved.path, saved.fileName);
+        // Handle Google Drive-backed documents
+        if (saved.driveId) {
+            console.log('[viewDocument] Opening Drive document:', saved.fileName);
+
+            // Check if Drive file is still accessible
+            const validation = await validateDriveFileAccess(saved.driveId);
+
+            if (!validation.accessible) {
+                alert('⚠️ ' + validation.error + '\n\n' + saved.fileName + '\n\nThe document owner may have deleted it or revoked access. Contact them to restore access, or delete this reference and upload a new document.');
+                recordAudit(v, 'document_access_failed', [{
+                    field: saved.label || 'Document',
+                    before: saved.fileName,
+                    after: 'Access denied: ' + validation.error
+                }]);
+                return;
+            }
+
+            // Open the Drive file in new window
+            window.open(validation.webLink, '_blank', 'noopener');
+            recordAudit(v, 'document_viewed', [{
+                field: saved.label || 'Document',
+                before: '—',
+                after: saved.fileName + ' (Drive)'
+            }]);
+            return;
+        }
+
+        // Handle Storage-backed documents (existing behavior)
+        if (saved.path) {
+            console.log('[viewDocument] Opening Storage document:', saved.fileName);
+            await cloudAdapter.viewDocument(saved.path, saved.fileName);
+            recordAudit(v, 'document_viewed', [{
+                field: saved.label || 'Document',
+                before: '—',
+                after: saved.fileName + ' (Storage)'
+            }]);
+            return;
+        }
+
+        alert('Document metadata is invalid. Please delete and re-upload.');
     } catch (error) {
         console.error('Document view failed:', error);
         alert('The document could not be opened: ' + (error.message || error));
+    }
+}
+
+async function addDriveDocument(key, label, file) {
+    console.log('[addDriveDocument] Adding Drive file:', file.name, file.driveId);
+
+    const v = getVendor(currentId);
+    if (!v) {
+        alert('Error: No case is currently open. Please open a case before linking documents.');
+        return;
+    }
+
+    if (!v.documents) v.documents = {};
+    if (!Array.isArray(v.documents[key])) v.documents[key] = v.documents[key] ? [v.documents[key]] : [];
+    const list = v.documents[key];
+
+    try {
+        // Add Drive-backed document metadata
+        list.push({
+            driveId: file.driveId,
+            fileName: file.name,
+            mimeType: file.mimeType,
+            key,
+            label,
+            uploadedAt: Date.now(),
+            uploadedBy: { ...authenticatedUser },
+            source: 'drive'
+        });
+        console.log('[addDriveDocument] Document added to list');
+
+        // Update vendor timestamp to prevent rollback
+        v.updatedAt = Date.now();
+        v.updatedBy = { ...authenticatedUser };
+
+        // Record in audit trail
+        recordAudit(v, 'document', [{
+            field: label,
+            before: '—',
+            after: file.name + ' (Google Drive)'
+        }]);
+
+        // Immediate Firestore sync
+        await persistDocuments();
+        renderCase();
+        alert('Document linked from Google Drive successfully!');
+    } catch (error) {
+        console.error('[addDriveDocument] Error adding Drive document:', error);
+        alert('Failed to link document: ' + (error.message || error));
     }
 }
 
