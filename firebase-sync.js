@@ -66,9 +66,15 @@ async function startFirebase() {
         // bypass the debounce — used for document uploads/deletions where the
         // metadata must reach Firestore before the user can navigate away
         async flushNow() {
-            if (!user) return;
+            console.log('[flushNow] Called, user:', !!user, 'pendingVendors:', !!pendingVendors);
+            if (!user) {
+                console.warn('[flushNow] No user authenticated, skipping flush');
+                return;
+            }
             clearTimeout(saveTimer);
+            console.log('[flushNow] Calling flush...');
             await flush();
+            console.log('[flushNow] Flush completed');
         },
 
         async deleteOne(id, documentPaths = []) {
@@ -186,7 +192,11 @@ async function startFirebase() {
     };
 
     async function flush() {
-        if (!user || !pendingVendors) return;
+        console.log('[flush] Starting, user:', !!user, 'pendingVendors:', !!pendingVendors);
+        if (!user || !pendingVendors) {
+            console.log('[flush] Skipped: user=', !!user, ', pendingVendors=', !!pendingVendors);
+            return;
+        }
         const snapshot = pendingVendors;
         pendingVendors = null;
 
@@ -195,6 +205,7 @@ async function startFirebase() {
                 .map(ensureAuditIdentity)
                 .filter(vendor => remoteFingerprints.get(vendor.id) !== fingerprint(vendor));
 
+            console.log('[flush] Writing', changed.length, 'changed vendors to Firestore');
             for (let offset = 0; offset < changed.length; offset += 400) {
                 const batch = firestoreSdk.writeBatch(db);
                 const chunk = changed.slice(offset, offset + 400);
@@ -207,8 +218,10 @@ async function startFirebase() {
                 await batch.commit();
                 chunk.forEach(vendor => remoteFingerprints.set(vendor.id, fingerprint(vendor)));
             }
+            console.log('[flush] Successfully synced to Firestore');
             window.setSyncStatus("online", "Synced", `Connected as ${user.email || user.displayName}`);
         } catch (error) {
+            console.error('[flush] Error during sync:', error);
             // keep the data and retry — without this, a single failed write left
             // pendingVendors stranded until the next edit, losing it on tab close
             pendingVendors = snapshot;
