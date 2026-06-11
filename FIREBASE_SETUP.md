@@ -14,6 +14,8 @@ estiver configurado.
 - `firebase-config.js`: identificacao do projeto Firebase.
 - `firebase-sync.js`: login Google e sincronizacao com o Firestore.
 - `firestore.rules`: define quem pode ler e alterar casos.
+- `storage.rules`: define quem pode enviar, visualizar e excluir documentos.
+- `cors.json`: permite a visualizacao protegida no GitHub Pages e no servidor local.
 - `firebase.json`: configuracao de deploy das regras e do Hosting.
 
 ## SDK Firebase x Firebase CLI
@@ -117,6 +119,74 @@ Nunca coloque no frontend:
 - private key;
 - senha de banco;
 - credencial do Firebase Admin SDK.
+
+## Documentos no Firebase Storage
+
+O tracker aceita documentos em PDF, JPG e PNG, com tamanho maximo de 10 MB.
+Cada arquivo e armazenado em uma pasta exclusiva do caso:
+
+```text
+workspaces/ba-express-vetting/drivers/ID_DO_CASO/
+```
+
+O nome e gerado automaticamente no formato:
+
+```text
+TIPO_DO_DOCUMENTO NOME_COMPLETO_DO_DRIVER.extensao
+```
+
+Exemplo:
+
+```text
+Driver Licence John Smith.pdf
+```
+
+O usuario nao precisa renomear o arquivo antes do upload. O nome original e
+substituido pelo padrao acima. O Firestore guarda os metadados do documento,
+incluindo nome, caminho, tamanho, data e usuario que realizou o upload.
+
+### Ativar o Storage
+
+1. No [Firebase Console](https://console.firebase.google.com/), abra o projeto.
+2. Acesse **Build > Storage**.
+3. Clique em **Get started**.
+4. Escolha a mesma regiao usada pelo Firestore, quando possivel.
+5. Finalize a criacao do bucket.
+
+Nao use regras publicas de teste. Este repositorio possui `storage.rules`, que
+permite acesso somente a usuarios Google com email `@baexpress.co.uk`.
+
+Publique as regras do Firestore e do Storage:
+
+```bash
+firebase deploy --only firestore:rules,storage
+```
+
+### Permitir a visualizacao no navegador
+
+O botao **View** usa o SDK autenticado, sem criar um link publico permanente.
+Para isso, o bucket precisa aceitar requisicoes de leitura vindas da pagina.
+
+No Google Cloud Console:
+
+1. Abra **Cloud Storage > Buckets**.
+2. Clique no bucket `vetting-63c6d.firebasestorage.app`.
+3. Abra **Configuration**.
+4. Em **Cross-origin resource sharing (CORS)**, clique em editar.
+5. Adicione as origens `https://j-mazini.github.io` e
+   `http://localhost:4173`, com metodo `GET` e tempo de cache `3600`.
+
+O arquivo `cors.json` contem a mesma configuracao. Se o Google Cloud CLI estiver
+instalado, ela pode ser aplicada por comando:
+
+```bash
+gcloud storage buckets update gs://vetting-63c6d.firebasestorage.app \
+  --cors-file=cors.json
+```
+
+Depois do deploy, abra um caso, expanda **Collect Core Evidence** e use o botao
+**Upload**. O botao **View** abre o arquivo somente depois de validar a sessao
+Firebase do usuario.
 
 ## 4. Ativar login Google
 

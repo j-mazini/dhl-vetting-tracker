@@ -1256,6 +1256,50 @@
         background: var(--red-dim);
     }
 
+    .document-upload {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        flex-wrap: wrap;
+        margin-top: 9px;
+        padding: 9px 10px;
+        background: rgba(255,255,255,.72);
+        border: 1px dashed rgba(17,24,39,.16);
+        border-radius: 10px;
+        text-decoration: none !important;
+    }
+
+    .document-upload.busy { opacity: .68; pointer-events: none; }
+
+    .document-name {
+        flex: 1;
+        min-width: 180px;
+        color: var(--text-soft);
+        font-size: 10.5px;
+        line-height: 1.45;
+        word-break: break-word;
+    }
+
+    .document-name b { color: var(--text); }
+
+    .document-action {
+        border: 1px solid rgba(191,29,35,.2);
+        border-radius: 8px;
+        padding: 6px 9px;
+        color: var(--ba-red);
+        background: rgba(191,29,35,.055);
+        font-family: inherit;
+        font-size: 9px;
+        font-weight: 800;
+        letter-spacing: .06em;
+        text-transform: uppercase;
+        cursor: pointer;
+    }
+
+    .document-action:hover { background: rgba(191,29,35,.1); }
+    .document-action.view { color: var(--ba-navy); border-color: var(--line-strong); background: rgba(17,24,39,.035); }
+    .document-progress { color: var(--amber); font-size: 9.5px; font-weight: 800; }
+
     .check-links {
         display: flex;
         flex-wrap: wrap;
@@ -1776,7 +1820,7 @@
         <div class="toolbar">
             <div class="search-box">
                 <svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><line x1="16.5" y1="16.5" x2="21" y2="21"/></svg>
-                <input type="text" id="searchInput" placeholder="Search vendor by name, depot or role…" oninput="renderDashboard()">
+                <input type="text" id="searchInput" placeholder="Search driver, depot, role or document…" oninput="renderDashboard()">
             </div>
             <button class="btn btn-main" onclick="openModal()">+ New vendor</button>
         </div>
@@ -1918,34 +1962,40 @@ const STEPS = [
         sub: 'Use the Driver Document Request Checklist (Appendix A)',
         items: [
             { t: 'Identity — original passport or acceptable photo ID', s: 'Original required; verify in person before DHL handoff',
+              doc: { k: 'identity', label: 'Identity Document' },
               fields: [
                   { k: 'idRef', label: 'Document type / number', type: 'text', ph: 'e.g. Passport 123456789' },
                   { k: 'idExpiry', label: 'Document expiry', type: 'date' }
               ] },
             { t: 'Right to Work — passport, visa, share code, BRP', s: 'Check expiry; if time-limited, record visa expiry date and set a reminder',
+              doc: { k: 'rightToWork', label: 'Right to Work' },
               links: [{ label: 'RTW Share Code Check', url: 'https://www.gov.uk/view-right-to-work' }],
               fields: [
                   { k: 'rtwRef', label: 'Share code / visa ref', type: 'text', ph: 'e.g. W12 345 678' },
                   { k: 'rtwExpiry', label: 'Visa / RTW expiry', type: 'date' }
               ] },
             { t: 'Sanctions / Denied Parties — dated check result', s: 'Check must be dated; retain the evidence of the check, not just the result',
+              doc: { k: 'sanctions', label: 'Sanctions Check' },
               links: [{ label: 'Sanctions Search (OFAC)', url: 'https://sanctionssearch.ofac.treas.gov' }],
               fields: [
                   { k: 'sanctionsDate', label: 'Check date', type: 'date', req: true },
                   { k: 'sanctionsResult', label: 'Result', type: 'text', ph: 'e.g. Clear' }
               ] },
             { t: 'Full UK or valid foreign driving licence', s: 'If foreign, check UK residency rules for licence validity',
+              doc: { k: 'driverLicence', label: 'Driver Licence' },
               fields: [
                   { k: 'licCountry', label: 'Licence country of issue', type: 'text', ph: 'e.g. UK' },
                   { k: 'licExpiry', label: 'Licence expiry', type: 'date' }
               ] },
             { t: 'DVLA check — code result or share result', s: 'Check points, bans, disqualifications; record the check date',
+              doc: { k: 'dvlaCheck', label: 'DVLA Check' },
               links: [{ label: 'DVLA Driving Check', url: 'https://www.gov.uk/check-driving-information' }],
               fields: [
                   { k: 'dvlaDate', label: 'Check date', type: 'date', req: true },
                   { k: 'dvlaPoints', label: 'Points / bans / endorsements', type: 'text', ph: 'e.g. None' }
               ] },
             { t: 'UK CRC — original hard-copy basic DBS or Disclosure Scotland', s: 'Electronic/online copies not acceptable where hard copy is required',
+              doc: { k: 'ukCrc', label: 'UK CRC' },
               links: [
                   { label: 'Criminal Record (England/Wales)', url: 'https://www.gov.uk/request-copy-criminal-record' },
                   { label: 'Disclosure (Scotland)', url: 'https://www.mygov.scot/apply-for-level-1-disclosure' }
@@ -1955,17 +2005,22 @@ const STEPS = [
                   { k: 'crcSource', label: 'Source', type: 'select', opts: ['DBS (England/Wales)', 'Disclosure Scotland'] }
               ] },
             { t: 'International CRC — if 6+ months abroad in last 5 years', s: 'One per country; if unobtainable, document why and escalate to DHL',
+              doc: { k: 'internationalCrc', label: 'International CRC' },
               fields: [{ k: 'intlCrc', label: 'Countries & dates (or N/A)', type: 'text', ph: 'e.g. Poland 2022–2023, or N/A' }] },
             { t: 'Proof of current address', s: 'Must be current and match the address given by the driver',
+              doc: { k: 'proofOfAddress', label: 'Proof of Address' },
               fields: [
                   { k: 'addrDocType', label: 'Document type', type: 'text', ph: 'e.g. Council tax bill' },
                   { k: 'addrDocDate', label: 'Document date', type: 'date' }
               ] },
             { t: 'Written references covering the full 5 years', s: 'Verbal not accepted; must come from the employer/agency',
+              doc: { k: 'references', label: 'References' },
               fields: [{ k: 'refCoverage', label: 'Referees / period covered', type: 'text', ph: 'e.g. Acme Ltd 2021–2024, XYZ Agency 2024–2026' }] },
             { t: 'HMRC evidence (SA302, UTR) if not PAYE',
+              doc: { k: 'hmrcEvidence', label: 'HMRC Evidence' },
               fields: [{ k: 'hmrcRef', label: 'UTR / evidence reference (or N/A)', type: 'text', ph: 'e.g. UTR 1234567890, or N/A' }] },
             { t: 'APHIDS / ACCS as required for your depot',
+              doc: { k: 'aphidsConfirmation', label: 'APHIDS Confirmation' },
               links: [{ label: 'APHIDS Application', url: 'https://cargo.aphids-application.homeoffice.gov.uk' }],
               fields: [
                   { k: 'aphidsDate', label: 'Submission date', type: 'date' },
@@ -2143,6 +2198,7 @@ function migrateVendor(v) {
         v.ver = 3;
     }
     if (!v.itemData) v.itemData = {};
+    if (!v.documents) v.documents = {};
     if (v.dob === undefined) v.dob = '';
     if (v.address === undefined) v.address = '';
     if (!Array.isArray(v.auditLog)) v.auditLog = [];
@@ -2425,8 +2481,11 @@ function renderDashboard() {
     let list = vendors.slice().sort((a, b) => b.createdAt - a.createdAt);
 
     if (filter !== 'all') list = list.filter(v => v.status === filter);
-    if (q) list = list.filter(v =>
-        (v.name + ' ' + (v.depot || '') + ' ' + (v.role || '')).toLowerCase().includes(q));
+    if (q) list = list.filter(v => {
+        const documentNames = Object.values(v.documents || {}).map(doc => doc.fileName || '').join(' ');
+        return (v.name + ' ' + (v.depot || '') + ' ' + (v.role || '') + ' ' + documentNames)
+            .toLowerCase().includes(q);
+    });
 
     const box = document.getElementById('vendorList');
 
@@ -2630,6 +2689,7 @@ function addVendor() {
             totalScore: 0, scoredAt: null
         },
         itemData: {},
+        documents: {},
         createdBy: authenticatedUser ? { ...authenticatedUser } : null,
         updatedBy: authenticatedUser ? { ...authenticatedUser } : null,
         updatedAt: Date.now(),
@@ -2756,6 +2816,7 @@ function auditEntryHtml(entry) {
         : entry.action === 'case-details' ? 'Updated case details'
         : entry.action === 'checklist' ? 'Updated checklist'
         : entry.action === 'interview' ? 'Updated interview'
+        : entry.action === 'document' ? 'Updated a document'
         : entry.action === 'decision' ? 'Changed case decision'
         : entry.action === 'reset' ? 'Reset checklist'
         : 'Edited a field';
@@ -2784,6 +2845,158 @@ function fmtDateTime(value) {
         day: '2-digit', month: 'short', year: 'numeric',
         hour: '2-digit', minute: '2-digit'
     });
+}
+
+function documentFileDetails(file) {
+    const extension = String(file.name || '').split('.').pop().toLowerCase();
+    const types = {
+        pdf: 'application/pdf',
+        jpg: 'image/jpeg',
+        jpeg: 'image/jpeg',
+        png: 'image/png'
+    };
+    if (!types[extension]) return null;
+    if (file.type && !Object.values(types).includes(file.type)) return null;
+    return { extension, contentType: types[extension] };
+}
+
+function standardDocumentFileName(label, driverName, extension) {
+    const base = (label + ' ' + driverName)
+        .replace(/[\/\\?#\[\]*:"<>|]+/g, ' ')
+        .replace(/\s+/g, ' ')
+        .trim()
+        .slice(0, 160);
+    return (base || 'Driver Document') + '.' + extension;
+}
+
+function renderDocumentUpload(v, documentType) {
+    const saved = (v.documents || {})[documentType.k];
+    const inputId = 'document-input-' + documentType.k;
+    const uploader = saved && saved.uploadedBy
+        ? saved.uploadedBy.name || saved.uploadedBy.email
+        : '';
+    const details = saved
+        ? '<span class="document-name"><b>' + esc(saved.fileName) + '</b><br>' +
+            esc(formatFileSize(saved.size)) + ' · ' + esc(fmtDateTime(saved.uploadedAt)) +
+            (uploader ? ' · ' + esc(uploader) : '') + '</span>'
+        : '<span class="document-name">No file uploaded. It will be saved as <b>' +
+            esc(documentType.label + ' ' + v.name) + '.[pdf/jpg/png]</b></span>';
+
+    return '<span class="document-upload" data-document-key="' + esc(documentType.k) + '" onclick="event.stopPropagation()">' +
+        '<input id="' + inputId + '" type="file" hidden accept=".pdf,.jpg,.jpeg,.png,application/pdf,image/jpeg,image/png" ' +
+            'onchange="uploadDocument(\'' + esc(documentType.k) + '\',\'' + esc(documentType.label) + '\',this)">' +
+        details +
+        '<span class="document-progress" id="document-progress-' + esc(documentType.k) + '"></span>' +
+        (saved
+            ? '<button type="button" class="document-action view" onclick="viewDocument(\'' + esc(documentType.k) + '\')">View</button>' +
+              '<button type="button" class="document-action" onclick="document.getElementById(\'' + inputId + '\').click()">Replace</button>' +
+              '<button type="button" class="document-action" onclick="removeDocument(\'' + esc(documentType.k) + '\')">Delete</button>'
+            : '<button type="button" class="document-action" onclick="document.getElementById(\'' + inputId + '\').click()">Upload</button>') +
+        '</span>';
+}
+
+function formatFileSize(bytes) {
+    if (!Number.isFinite(Number(bytes))) return 'Unknown size';
+    if (bytes < 1024 * 1024) return Math.max(1, Math.round(bytes / 1024)) + ' KB';
+    return (bytes / (1024 * 1024)).toFixed(1) + ' MB';
+}
+
+async function uploadDocument(key, label, input) {
+    const file = input.files && input.files[0];
+    input.value = '';
+    if (!file) return;
+    if (!cloudAdapter || !authenticatedUser) {
+        alert('Sign in with an authorized BA Express account before uploading documents.');
+        return;
+    }
+    const details = documentFileDetails(file);
+    if (!details) {
+        alert('Unsupported file. Upload a PDF, JPG or PNG document.');
+        return;
+    }
+    if (file.size > 10 * 1024 * 1024) {
+        alert('This file is larger than 10 MB. Choose a smaller document.');
+        return;
+    }
+
+    const v = getVendor(currentId);
+    if (!v) return;
+    if (!v.documents) v.documents = {};
+    const previous = v.documents[key] || null;
+    const fileName = standardDocumentFileName(label, v.name, details.extension);
+    if (previous && !confirm('Replace ' + previous.fileName + ' with ' + fileName + '?')) return;
+
+    const box = document.querySelector('[data-document-key="' + key + '"]');
+    const progress = document.getElementById('document-progress-' + key);
+    if (box) box.classList.add('busy');
+    if (progress) progress.textContent = 'Starting upload...';
+
+    try {
+        const stored = await cloudAdapter.uploadDocument({
+            vendorId: v.id,
+            documentKey: key,
+            documentLabel: label,
+            file,
+            fileName,
+            contentType: details.contentType,
+            previousPath: previous && previous.path,
+            onProgress(percent) {
+                if (progress) progress.textContent = 'Uploading ' + percent + '%';
+            }
+        });
+        v.documents[key] = {
+            ...stored,
+            key,
+            label,
+            uploadedAt: Date.now(),
+            uploadedBy: { ...authenticatedUser }
+        };
+        recordAudit(v, 'document', [{
+            field: label,
+            before: previous ? previous.fileName : 'No document',
+            after: fileName
+        }]);
+        saveStore();
+        renderCase();
+    } catch (error) {
+        console.error('Document upload failed:', error);
+        alert('The document could not be uploaded: ' + (error.message || error));
+        if (box) box.classList.remove('busy');
+        if (progress) progress.textContent = '';
+    }
+}
+
+async function viewDocument(key) {
+    const v = getVendor(currentId);
+    const saved = v && v.documents && v.documents[key];
+    if (!saved || !cloudAdapter) return;
+    try {
+        await cloudAdapter.viewDocument(saved.path, saved.fileName);
+    } catch (error) {
+        console.error('Document view failed:', error);
+        alert('The document could not be opened: ' + (error.message || error));
+    }
+}
+
+async function removeDocument(key) {
+    const v = getVendor(currentId);
+    const saved = v && v.documents && v.documents[key];
+    if (!saved || !cloudAdapter) return;
+    if (!confirm('Delete ' + saved.fileName + '? This cannot be undone.')) return;
+    try {
+        await cloudAdapter.deleteDocument(saved.path);
+        delete v.documents[key];
+        recordAudit(v, 'document', [{
+            field: saved.label || 'Document',
+            before: saved.fileName,
+            after: 'Deleted'
+        }]);
+        saveStore();
+        renderCase();
+    } catch (error) {
+        console.error('Document deletion failed:', error);
+        alert('The document could not be deleted: ' + (error.message || error));
+    }
 }
 
 function renderTimeline(v) {
@@ -2815,6 +3028,7 @@ function renderTimeline(v) {
                       return '<span class="if-field"><label>' + esc(f.label) + reqMark + '</label>' + input + '</span>';
                   }).join('') + '</span>'
                 : '';
+            const documentHtml = it.doc ? renderDocumentUpload(v, it.doc) : '';
             return (
                 '<li class="check-item" onclick="toggleCheck(event,' + gi + ')">' +
                     '<input type="checkbox" data-gi="' + gi + '"' + (v.checks[gi] ? ' checked' : '') + '>' +
@@ -2822,6 +3036,7 @@ function renderTimeline(v) {
                         (it.s ? '<small>' + esc(it.s) + '</small>' : '') +
                         linksHtml +
                         fieldsHtml +
+                        documentHtml +
                     '</span>' +
                 '</li>'
             );
@@ -3333,7 +3548,7 @@ function deleteVendor() {
     const v = getVendor(currentId);
     if (!confirm('Delete the vetting case for ' + v.name + '? This cannot be undone.')) return;
     vendors = vendors.filter(x => x.id !== v.id);
-    if (cloudAdapter) cloudAdapter.deleteOne(v.id);
+    if (cloudAdapter) cloudAdapter.deleteOne(v.id, Object.values(v.documents || {}).map(doc => doc.path));
     saveStore();
     showDashboard();
 }
@@ -3393,6 +3608,10 @@ function reportBlocks(v) {
                 const val = (v.itemData || {})[f.k];
                 if (val) lines.push({ text: f.label + ': ' + fieldDisplay(f, val), indent: true, dim: true });
             });
+            if (it.doc && (v.documents || {})[it.doc.k]) {
+                const doc = v.documents[it.doc.k];
+                lines.push({ text: 'Uploaded document: ' + doc.fileName, indent: true, dim: true });
+            }
         });
         blocks.push({ h: 'Step ' + (si + 1) + ' — ' + step.title + ' [' + sliceDone + '/' + step.items.length + ']', lines });
         idx += step.items.length;

@@ -1,0 +1,16 @@
+[
+  {
+    "origin": [
+      "https://j-mazini.github.io",
+      "http://localhost:4173"
+    ],
+    "method": [
+      "GET"
+    ],
+    "responseHeader": [
+      "Content-Type",
+      "Content-Disposition"
+    ],
+    "maxAgeSeconds": 3600
+  }
+]

@@ -25,15 +25,17 @@ async function startFirebase() {
     window.setFirebaseAuthButton("Connecting", true);
 
     const version = "12.14.0";
-    const [{ initializeApp }, authSdk, firestoreSdk] = await Promise.all([
+    const [{ initializeApp }, authSdk, firestoreSdk, storageSdk] = await Promise.all([
         import(`https://www.gstatic.com/firebasejs/${version}/firebase-app.js`),
         import(`https://www.gstatic.com/firebasejs/${version}/firebase-auth.js`),
-        import(`https://www.gstatic.com/firebasejs/${version}/firebase-firestore.js`)
+        import(`https://www.gstatic.com/firebasejs/${version}/firebase-firestore.js`),
+        import(`https://www.gstatic.com/firebasejs/${version}/firebase-storage.js`)
     ]);
 
     const app = initializeApp(config);
     const auth = authSdk.getAuth(app);
     const db = firestoreSdk.getFirestore(app);
+    const storage = storageSdk.getStorage(app);
     const provider = new authSdk.GoogleAuthProvider();
     provider.setCustomParameters({ hd: "baexpress.co.uk", prompt: "select_account" });
     const workspaceId = safeId(settings.workspaceId || "ba-express-vetting");
@@ -61,13 +63,93 @@ async function startFirebase() {
             window.setSyncStatus("syncing", "Saving", "Changes are being saved to Firestore");
         },
 
-        async deleteOne(id) {
+        async deleteOne(id, documentPaths = []) {
             if (!user) return;
             try {
+                await Promise.all(documentPaths.filter(Boolean).map(path =>
+                    storageSdk.deleteObject(storageSdk.ref(storage, path))
+                        .catch(error => {
+                            if (error && error.code !== "storage/object-not-found") throw error;
+                        })
+                ));
                 await firestoreSdk.deleteDoc(firestoreSdk.doc(vendorsRef, safeId(id)));
             } catch (error) {
                 showError(error);
             }
+        },
+
+        async uploadDocument({
+            vendorId,
+            documentKey,
+            documentLabel,
+            file,
+            fileName,
+            contentType,
+            previousPath,
+            onProgress
+        }) {
+            if (!user) throw new Error("Sign in before uploading documents.");
+            const path = `workspaces/${workspaceId}/drivers/${safeId(vendorId)}/${fileName}`;
+            const fileRef = storageSdk.ref(storage, path);
+            const task = storageSdk.uploadBytesResumable(fileRef, file, {
+                contentType,
+                customMetadata: {
+                    uploaderUid: user.uid,
+                    uploaderEmail: String(user.email || "").toLowerCase(),
+                    documentKey,
+                    documentLabel,
+                    vendorId
+                }
+            });
+
+            await new Promise((resolve, reject) => {
+                task.on(
+                    "state_changed",
+                    snapshot => {
+                        const percent = snapshot.totalBytes
+                            ? Math.round(snapshot.bytesTransferred / snapshot.totalBytes * 100)
+                            : 0;
+                        if (onProgress) onProgress(percent);
+                    },
+                    reject,
+                    resolve
+                );
+            });
+
+            if (previousPath && previousPath !== path) {
+                await storageSdk.deleteObject(storageSdk.ref(storage, previousPath))
+                    .catch(error => {
+                        if (error && error.code !== "storage/object-not-found") throw error;
+                    });
+            }
+
+            return {
+                path,
+                fileName,
+                contentType,
+                size: file.size
+            };
+        },
+
+        async viewDocument(path, fileName) {
+            if (!user) throw new Error("Sign in before viewing documents.");
+            const blob = await storageSdk.getBlob(storageSdk.ref(storage, path));
+            const url = URL.createObjectURL(blob);
+            const opened = window.open(url, "_blank", "noopener");
+            if (!opened) {
+                const link = document.createElement("a");
+                link.href = url;
+                link.target = "_blank";
+                link.rel = "noopener";
+                link.download = fileName || "document";
+                link.click();
+            }
+            setTimeout(() => URL.revokeObjectURL(url), 60000);
+        },
+
+        async deleteDocument(path) {
+            if (!user) throw new Error("Sign in before deleting documents.");
+            await storageSdk.deleteObject(storageSdk.ref(storage, path));
         },
 
         async authAction() {
@@ -244,5 +326,7 @@ function readableError(error) {
     if (code === "popup-closed-by-user") return "Google sign-in was cancelled.";
     if (code === "unauthorized-domain") return "Add this website domain in Firebase Authentication > Settings > Authorized domains.";
     if (code === "permission-denied") return "This account is not allowed by the Firestore security rules.";
+    if (code === "storage/unauthorized") return "This account is not allowed by the Firebase Storage security rules.";
+    if (code === "storage/object-not-found") return "This document no longer exists in Firebase Storage.";
     return error && error.message ? error.message : "Could not connect to Firebase.";
 }

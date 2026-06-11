@@ -1,0 +1,28 @@
+rules_version = '2';
+
+service firebase.storage {
+  match /b/{bucket}/o {
+    function isBaExpressUser() {
+      return request.auth != null
+        && request.auth.token.email != null
+        && request.auth.token.email.matches('^[^@]+@baexpress\\.co\\.uk$');
+    }
+
+    function validDocument() {
+      return request.resource.size <= 10 * 1024 * 1024
+        && request.resource.contentType.matches('^(application/pdf|image/jpeg|image/png)$')
+        && request.resource.metadata.uploaderUid == request.auth.uid
+        && request.resource.metadata.uploaderEmail == request.auth.token.email;
+    }
+
+    match /workspaces/ba-express-vetting/drivers/{vendorId}/{fileName} {
+      allow read: if isBaExpressUser();
+      allow create, update: if isBaExpressUser() && validDocument();
+      allow delete: if isBaExpressUser();
+    }
+
+    match /{allPaths=**} {
+      allow read, write: if false;
+    }
+  }
+}
