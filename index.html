@@ -8,6 +8,7 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Montserrat:wght@700;800;900&display=swap" rel="stylesheet">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="firebase-config.js"></script>
 <style>
     :root {
         --ba-red: #bf1d23;
@@ -145,6 +146,237 @@
         align-items: center;
         gap: 22px;
     }
+
+    .topbar-tools {
+        display: flex;
+        align-items: center;
+        gap: 14px;
+    }
+
+    .sync-control {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        padding-left: 14px;
+        border-left: 1px solid var(--line);
+    }
+
+    .sync-status {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        color: var(--muted);
+        font-size: 9px;
+        font-weight: 800;
+        letter-spacing: .08em;
+        text-transform: uppercase;
+        white-space: nowrap;
+    }
+
+    .sync-status::before {
+        content: "";
+        width: 7px;
+        height: 7px;
+        border-radius: 50%;
+        background: var(--muted);
+        box-shadow: 0 0 0 3px rgba(115,125,140,.1);
+    }
+
+    .sync-status.online { color: var(--green); }
+    .sync-status.online::before {
+        background: var(--green);
+        box-shadow: 0 0 0 3px var(--green-dim);
+    }
+
+    .sync-status.syncing { color: var(--amber); }
+    .sync-status.syncing::before {
+        background: var(--amber);
+        box-shadow: 0 0 0 3px var(--amber-dim);
+        animation: syncPulse 1.2s ease-in-out infinite;
+    }
+
+    .sync-status.error { color: var(--ba-red); }
+    .sync-status.error::before {
+        background: var(--ba-red);
+        box-shadow: 0 0 0 3px var(--red-dim);
+    }
+
+    @keyframes syncPulse {
+        50% { opacity: .4; transform: scale(.75); }
+    }
+
+    /* ===== Authentication gate ===== */
+    .auth-gate {
+        position: fixed;
+        inset: 0;
+        z-index: 1000;
+        display: grid;
+        place-items: center;
+        padding: 24px;
+        background:
+            radial-gradient(70% 65% at 12% 20%, rgba(191,29,35,.12), transparent 72%),
+            radial-gradient(60% 60% at 92% 90%, rgba(17,24,39,.09), transparent 74%),
+            rgba(249,250,251,.96);
+        backdrop-filter: blur(18px);
+        -webkit-backdrop-filter: blur(18px);
+        transition: opacity .35s, visibility .35s;
+    }
+
+    .auth-gate.hidden {
+        opacity: 0;
+        visibility: hidden;
+        pointer-events: none;
+    }
+
+    .auth-card {
+        width: min(100%, 440px);
+        position: relative;
+        overflow: hidden;
+        text-align: center;
+        background: linear-gradient(165deg, rgba(255,255,255,.98), rgba(255,255,255,.82));
+        border: 1px solid rgba(255,255,255,.9);
+        border-radius: 28px;
+        padding: 38px 34px 32px;
+        box-shadow: 0 30px 80px -24px rgba(17,24,39,.3), inset 0 1px rgba(255,255,255,.95);
+    }
+
+    .auth-card::before {
+        content: "";
+        position: absolute;
+        inset: 0;
+        pointer-events: none;
+        background: radial-gradient(100% 70% at 0 0, rgba(191,29,35,.08), transparent 52%);
+    }
+
+    .auth-brand {
+        position: relative;
+        width: 112px;
+        height: 112px;
+        object-fit: contain;
+        margin-bottom: 20px;
+        filter: drop-shadow(0 10px 18px rgba(17,24,39,.15));
+    }
+
+    .auth-eyebrow {
+        position: relative;
+        color: var(--ba-red);
+        font-size: 9.5px;
+        font-weight: 800;
+        letter-spacing: .16em;
+        text-transform: uppercase;
+        margin-bottom: 9px;
+    }
+
+    .auth-title {
+        position: relative;
+        color: var(--ba-navy-deep);
+        font-family: var(--font-display);
+        font-size: 25px;
+        font-weight: 900;
+        letter-spacing: -.04em;
+        line-height: 1.08;
+        text-transform: uppercase;
+    }
+
+    .auth-copy {
+        position: relative;
+        color: var(--text-soft);
+        max-width: 330px;
+        margin: 14px auto 0;
+        font-size: 12.5px;
+        line-height: 1.65;
+    }
+
+    .auth-message {
+        position: relative;
+        display: none;
+        margin-top: 18px;
+        padding: 11px 13px;
+        color: var(--ba-red-deep);
+        background: var(--red-dim);
+        border: 1px solid rgba(191,29,35,.2);
+        border-radius: 12px;
+        font-size: 11.5px;
+        line-height: 1.5;
+    }
+
+    .auth-message.show { display: block; }
+
+    .auth-google {
+        position: relative;
+        width: 100%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 11px;
+        margin-top: 22px;
+        padding: 13px 18px;
+        color: #fff;
+        background: linear-gradient(180deg, #d42a32 0%, var(--ba-red) 100%);
+        border: none;
+        border-radius: 10px;
+        box-shadow: 0 8px 24px rgba(191,29,35,.26);
+        font-family: inherit;
+        font-size: 11px;
+        font-weight: 800;
+        letter-spacing: .08em;
+        text-transform: uppercase;
+        cursor: pointer;
+        transition: transform .2s, box-shadow .2s, opacity .2s;
+    }
+
+    .auth-google:hover { transform: translateY(-2px); box-shadow: 0 12px 30px rgba(191,29,35,.34); }
+    .auth-google:disabled { opacity: .58; cursor: wait; transform: none; }
+
+    .auth-google svg {
+        width: 18px;
+        height: 18px;
+        padding: 2px;
+        background: #fff;
+        border-radius: 50%;
+    }
+
+    .auth-loader {
+        position: relative;
+        width: 32px;
+        height: 32px;
+        margin: 22px auto 0;
+        border: 3px solid rgba(191,29,35,.12);
+        border-top-color: var(--ba-red);
+        border-radius: 50%;
+        animation: authSpin .8s linear infinite;
+    }
+
+    @keyframes authSpin { to { transform: rotate(360deg); } }
+
+    .auth-foot {
+        position: relative;
+        color: var(--muted);
+        margin-top: 18px;
+        font-size: 9px;
+        font-weight: 700;
+        letter-spacing: .08em;
+        text-transform: uppercase;
+    }
+
+    .sync-btn {
+        color: var(--ba-red);
+        background: rgba(191,29,35,.06);
+        border: 1px solid rgba(191,29,35,.2);
+        border-radius: 8px;
+        padding: 8px 11px;
+        font-family: inherit;
+        font-size: 9px;
+        font-weight: 800;
+        letter-spacing: .08em;
+        text-transform: uppercase;
+        cursor: pointer;
+        white-space: nowrap;
+        transition: background .2s, transform .2s;
+    }
+
+    .sync-btn:hover { background: rgba(191,29,35,.11); transform: translateY(-1px); }
+    .sync-btn:disabled { cursor: wait; opacity: .55; transform: none; }
 
     .stat { text-align: right; }
 
@@ -1374,7 +1606,10 @@
         .dashboard-intro { grid-template-columns: 1fr; gap: 14px; }
         .dashboard-intro-badge { justify-self: start; }
         .summary-grid { grid-template-columns: repeat(2, 1fr); }
-        .top-stats { width: 100%; justify-content: space-between; }
+        .topbar-tools { width: 100%; justify-content: space-between; }
+        .top-stats { flex: 1; justify-content: space-between; }
+        .sync-control { padding-left: 10px; }
+        .sync-status { display: none; }
         .step-sub { display: none; }
         .actions-inner { justify-content: stretch; }
         .actions .btn { flex: 1; }
@@ -1386,7 +1621,28 @@
 </head>
 <body>
 
-<header class="topbar">
+<section class="auth-gate" id="authGate" aria-live="polite">
+    <div class="auth-card">
+        <img class="auth-brand" src="BA_logo.png" alt="BA Express">
+        <div class="auth-eyebrow">Secure compliance workspace</div>
+        <h1 class="auth-title">Driver Vetting Tracker</h1>
+        <p class="auth-copy" id="authCopy">Sign in with an authorized Google account to access and synchronize BA Express vetting cases.</p>
+        <div class="auth-message" id="authMessage"></div>
+        <div class="auth-loader" id="authLoader"></div>
+        <button class="auth-google" id="authGoogleButton" type="button" onclick="firebaseAuthAction()" style="display:none">
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+                <path fill="#4285F4" d="M21.6 12.23c0-.71-.06-1.4-.18-2.07H12v3.92h5.38a4.6 4.6 0 0 1-2 3.02v2.54h3.24c1.9-1.75 2.98-4.33 2.98-7.41z"/>
+                <path fill="#34A853" d="M12 22c2.7 0 4.97-.9 6.63-2.36l-3.24-2.54c-.9.6-2.05.96-3.39.96-2.61 0-4.82-1.76-5.61-4.13H3.04v2.62A10 10 0 0 0 12 22z"/>
+                <path fill="#FBBC05" d="M6.39 13.93A6 6 0 0 1 6.08 12c0-.67.11-1.32.31-1.93V7.45H3.04A10 10 0 0 0 2 12c0 1.61.38 3.14 1.04 4.55l3.35-2.62z"/>
+                <path fill="#EA4335" d="M12 5.94c1.47 0 2.79.51 3.83 1.5l2.87-2.88A9.64 9.64 0 0 0 12 2a10 10 0 0 0-8.96 5.45l3.35 2.62C7.18 7.7 9.39 5.94 12 5.94z"/>
+            </svg>
+            <span id="authGoogleLabel">Sign in with Google</span>
+        </button>
+        <div class="auth-foot">BA Express Ltd · Authorized users only</div>
+    </div>
+</section>
+
+<header class="topbar" inert>
     <div class="topbar-inner">
         <div class="topbar-row">
             <div class="brand" onclick="showDashboard()" title="Back to dashboard">
@@ -1395,7 +1651,13 @@
                     <span>BA Express · Compliance · SOP v1.0</span>
                 </h1>
             </div>
-            <div class="top-stats" id="topStats"></div>
+            <div class="topbar-tools">
+                <div class="top-stats" id="topStats"></div>
+                <div class="sync-control">
+                    <span class="sync-status" id="syncStatus" title="Data is stored in this browser">Local only</span>
+                    <button class="sync-btn" id="firebaseAuthButton" type="button" onclick="firebaseAuthAction()">Connect</button>
+                </div>
+            </div>
         </div>
         <div class="progress-track">
             <div class="progress-fill" id="progressFill"></div>
@@ -1403,7 +1665,7 @@
     </div>
 </header>
 
-<main class="wrap">
+<main class="wrap" inert>
 
     <!-- ============ DASHBOARD VIEW ============ -->
     <section class="view" id="dashboardView">
@@ -1478,7 +1740,7 @@
     </section>
 </main>
 
-<footer class="actions" id="caseActions" style="display:none">
+<footer class="actions" id="caseActions" style="display:none" inert>
     <div class="actions-inner">
         <button class="btn btn-danger-ghost" onclick="deleteVendor()">🗑 Delete case</button>
         <button class="btn btn-ghost" onclick="resetCase()">↺ Reset checklist</button>
@@ -1746,6 +2008,8 @@ let currentId = null;          // vendor open in case view
 let filter = 'all';            // dashboard filter
 let openSteps = new Set([0]);  // expanded steps in case view
 let ivTab = 0;                 // active tab inside the interview panel
+let cloudAdapter = null;
+let applyingCloudSnapshot = false;
 
 function loadStore() {
     try {
@@ -1835,9 +2099,96 @@ function migrateVendor(v) {
 
 function saveStore() {
     localStorage.setItem(STORE_KEY, JSON.stringify(vendors));
+    if (cloudAdapter && !applyingCloudSnapshot) cloudAdapter.saveAll(vendors);
 }
 
 function getVendor(id) { return vendors.find(v => v.id === id); }
+
+function setSyncStatus(state, text, title) {
+    const el = document.getElementById('syncStatus');
+    if (!el) return;
+    el.className = 'sync-status' + (state ? ' ' + state : '');
+    el.textContent = text;
+    el.title = title || text;
+}
+
+function setFirebaseAuthButton(text, disabled) {
+    const btn = document.getElementById('firebaseAuthButton');
+    if (!btn) return;
+    btn.textContent = text;
+    btn.disabled = !!disabled;
+}
+
+function setAuthGate(state, message, buttonLabel) {
+    const gate = document.getElementById('authGate');
+    const copy = document.getElementById('authCopy');
+    const error = document.getElementById('authMessage');
+    const loader = document.getElementById('authLoader');
+    const button = document.getElementById('authGoogleButton');
+    const label = document.getElementById('authGoogleLabel');
+    if (!gate) return;
+    const appLocked = state !== 'authenticated';
+    document.querySelectorAll('header.topbar, main.wrap, footer.actions').forEach(el => {
+        el.inert = appLocked;
+    });
+
+    if (state === 'authenticated') {
+        gate.classList.add('hidden');
+        gate.setAttribute('aria-hidden', 'true');
+        return;
+    }
+
+    gate.classList.remove('hidden');
+    gate.setAttribute('aria-hidden', 'false');
+    error.classList.toggle('show', state === 'error');
+    error.textContent = state === 'error' ? (message || 'Unable to access the workspace.') : '';
+
+    const loading = state === 'loading' || state === 'signing-in';
+    loader.style.display = loading ? '' : 'none';
+    button.style.display = loading && state !== 'signing-in' ? 'none' : 'flex';
+    button.disabled = state === 'signing-in';
+    label.textContent = buttonLabel || (state === 'signing-in' ? 'Opening Google' : 'Sign in with Google');
+
+    copy.textContent = state === 'loading'
+        ? (message || 'Checking your secure session...')
+        : state === 'error'
+            ? 'Access could not be completed. Review the message below or use another authorized account.'
+            : 'Sign in with an authorized Google account to access and synchronize BA Express vetting cases.';
+}
+
+function firebaseAuthAction() {
+    if (!cloudAdapter) {
+        alert('Firebase is not configured yet. Add your project credentials to firebase-config.js, then reload the page.');
+        return;
+    }
+    cloudAdapter.authAction();
+}
+
+function configureCloudSync(adapter) {
+    cloudAdapter = adapter;
+    adapter.subscribe(remoteVendors => {
+        const openId = currentId;
+        applyingCloudSnapshot = true;
+        vendors = remoteVendors;
+        vendors.forEach(migrateVendor);
+        localStorage.setItem(STORE_KEY, JSON.stringify(vendors));
+        applyingCloudSnapshot = false;
+
+        if (openId && getVendor(openId)) renderCase();
+        else if (openId) showDashboard();
+        else renderDashboard();
+    });
+}
+
+function localVendorSnapshot() {
+    return vendors.map(v => JSON.parse(JSON.stringify(v)));
+}
+
+window.configureCloudSync = configureCloudSync;
+window.localVendorSnapshot = localVendorSnapshot;
+window.setSyncStatus = setSyncStatus;
+window.setFirebaseAuthButton = setFirebaseAuthButton;
+window.setAuthGate = setAuthGate;
 
 function vendorProgress(v) {
     const done = v.checks.filter(Boolean).length;
@@ -2698,6 +3049,7 @@ function deleteVendor() {
     const v = getVendor(currentId);
     if (!confirm('Delete the vetting case for ' + v.name + '? This cannot be undone.')) return;
     vendors = vendors.filter(x => x.id !== v.id);
+    if (cloudAdapter) cloudAdapter.deleteOne(v.id);
     saveStore();
     showDashboard();
 }
@@ -2916,6 +3268,8 @@ document.addEventListener('keydown', e => {
 
 loadStore();
 showDashboard();
+window.dispatchEvent(new Event('tracker-ready'));
 </script>
+<script type="module" src="firebase-sync.js"></script>
 </body>
 </html>

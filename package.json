@@ -1,0 +1,24 @@
+{
+  "name": "dhl-vetting-tracker",
+  "version": "1.0.0",
+  "description": "",
+  "main": "firebase-config.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/j-mazini/dhl-vetting-tracker.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "bugs": {
+    "url": "https://github.com/j-mazini/dhl-vetting-tracker/issues"
+  },
+  "homepage": "https://github.com/j-mazini/dhl-vetting-tracker#readme",
+  "dependencies": {
+    "firebase": "^12.14.0"
+  }
+}

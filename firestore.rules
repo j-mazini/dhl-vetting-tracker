@@ -1,0 +1,22 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function isBaExpressUser() {
+      return request.auth != null
+        && request.auth.token.email != null
+        && (
+          request.auth.token.email.matches('.*@baexpress\\.co\\.uk$')
+          || request.auth.token.email == 'jhophjm@gmail.com'
+        );
+    }
+
+    match /workspaces/ba-express-vetting/vendors/{vendorId} {
+      allow read, create, update, delete: if isBaExpressUser();
+    }
+
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}
