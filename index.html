@@ -3460,6 +3460,36 @@ function itemByGi(gi) {
     return null;
 }
 
+function checklistPosition(gi) {
+    let base = 0;
+    for (let stepIndex = 0; stepIndex < STEPS.length; stepIndex++) {
+        const length = STEPS[stepIndex].items.length;
+        if (gi < base + length) return { stepIndex, base, length };
+        base += length;
+    }
+    return null;
+}
+
+function updateChecklistProgress(v, gi) {
+    const position = checklistPosition(gi);
+    if (!position) return;
+    const step = document.querySelectorAll('#timeline .step')[position.stepIndex];
+    if (!step) return;
+
+    const done = v.checks
+        .slice(position.base, position.base + position.length)
+        .filter(Boolean).length;
+    const complete = done === position.length;
+    step.classList.toggle('completed', complete);
+
+    const index = step.querySelector('.step-index');
+    const meter = step.querySelector('.step-meter');
+    if (index) index.textContent = complete ? '✓' : String(position.stepIndex + 1);
+    if (meter) meter.textContent = done + '/' + position.length;
+
+    renderTopbar();
+}
+
 function toggleCheck(e, gi) {
     if (e.target.closest && e.target.closest('.item-fields')) return; // typing in a field never toggles
     const v = getVendor(currentId);
@@ -3490,7 +3520,7 @@ function toggleCheck(e, gi) {
         after: box.checked
     }]);
     saveStore();
-    renderCase();
+    updateChecklistProgress(v, gi);
 }
 
 function setItemField(key, el) {
