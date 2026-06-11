@@ -1368,8 +1368,15 @@
         outline: none;
     }
     .document-drive-input[readonly] {
-        color: var(--text-soft);
+        color: #3367d6;
         background: var(--bg-soft);
+        cursor: pointer;
+        text-decoration: underline;
+    }
+    .document-drive-input[readonly]:placeholder-shown {
+        color: var(--muted);
+        cursor: default;
+        text-decoration: none;
     }
     .document-drive-input:focus { border-color: rgba(66,133,244,.65); }
     .document-drive-input.invalid {
@@ -3030,11 +3037,13 @@ function renderDocumentUpload(v, documentType, gi, checked) {
             '<span class="document-drive-row">' +
                 '<input id="drive-folder-' + esc(documentType.k) + '" class="document-drive-input" type="url" ' +
                     'placeholder="https://drive.google.com/drive/folders/..." value="' + esc(driveLink) + '" ' +
-                    (driveLink ? 'readonly ' : '') +
+                    'readonly ' +
+                    'onclick="openDocumentDriveLink(this)" ' +
+                    'onkeydown="openDocumentDriveLinkWithKeyboard(event,this)" ' +
                     'onblur="validateDocumentDriveLink(this)">' +
                 '<button type="button" class="document-action view document-drive-edit" ' +
                     'onclick="toggleDocumentDriveEdit(\'' + esc(linkKey) + '\',\'' + esc(documentType.label) + '\',this)">' +
-                    (driveLink ? 'Edit' : 'Save') + '</button>' +
+                    'Edit</button>' +
                 '<a class="document-action view document-drive-action document-drive-open" href="' + esc(driveHref || '#') + '" target="_blank" rel="noopener noreferrer"' +
                     (driveHref ? '' : ' hidden') + '>Open folder</a>' +
                 '<button type="button" class="document-action document-drive-action document-drive-delete" ' +
@@ -3073,6 +3082,18 @@ function saveDocumentDriveLink(key, label, input) {
 
 function validateDocumentDriveLink(input) {
     input.classList.toggle('invalid', !!input.value.trim() && !driveFolderHref(input.value));
+}
+
+function openDocumentDriveLink(input) {
+    if (!input.readOnly) return;
+    const href = driveFolderHref(input.value);
+    if (href) window.open(href, '_blank', 'noopener');
+}
+
+function openDocumentDriveLinkWithKeyboard(event, input) {
+    if (event.key !== 'Enter' || !input.readOnly) return;
+    event.preventDefault();
+    openDocumentDriveLink(input);
 }
 
 function toggleDocumentDriveEdit(key, label, button) {
@@ -3115,9 +3136,9 @@ function deleteDocumentDriveLink(key, label, button) {
     delete v.itemData[key];
 
     input.value = '';
-    input.readOnly = false;
+    input.readOnly = true;
     input.classList.remove('invalid');
-    if (editButton) editButton.textContent = 'Save';
+    if (editButton) editButton.textContent = 'Edit';
     const openLink = row.querySelector('.document-drive-open');
     if (openLink) {
         openLink.href = '#';
@@ -3131,7 +3152,6 @@ function deleteDocumentDriveLink(key, label, button) {
         after: '—'
     }]);
     saveStore();
-    input.focus();
 }
 
 function formatFileSize(bytes) {
