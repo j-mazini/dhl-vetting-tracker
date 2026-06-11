@@ -3797,6 +3797,144 @@ function exportInterview() {
         'Interview_Notes_' + v.name.replace(/\s+/g, '_') + '_' + new Date().toISOString().slice(0, 10));
 }
 
+/* =====================================================
+   Suitability Assessment — SOP §4.1: completed by the
+   compliance team before DHL handoff
+===================================================== */
+function exporterName() {
+    if (authenticatedUser && (authenticatedUser.name || authenticatedUser.email)) {
+        const n = authenticatedUser.name || authenticatedUser.email;
+        return authenticatedUser.email && authenticatedUser.email !== n
+            ? n + ' (' + authenticatedUser.email + ')' : n;
+    }
+    let n = localStorage.getItem('baExporterName') || '';
+    n = (prompt('Your name (recorded on the document as the exporter):', n) || '').trim();
+    if (n) localStorage.setItem('baExporterName', n);
+    return n || '—';
+}
+
+function stepByTitle(frag) {
+    let idx = 0;
+    for (const s of STEPS) {
+        if (s.title.indexOf(frag) !== -1) return { step: s, base: idx };
+        idx += s.items.length;
+    }
+    return null;
+}
+
+function suitabilityBlocks(v, exporter) {
+    const iv = v.interview || {};
+    const data = v.itemData || {};
+    const total = calcIvTotal(iv); const auto = autoDecision(total, iv);
+    const blocks = [];
+
+    const itemLines = frag => {
+        const found = stepByTitle(frag);
+        if (!found) return [];
+        const lines = [];
+        found.step.items.forEach((it, ii) => {
+            const ok = !!v.checks[found.base + ii];
+            lines.push({ text: (ok ? '[x] ' : '[ ] ') + it.t + ' — ' + (ok ? 'Compliant' : 'Missing'), bold: !ok });
+            (it.fields || []).forEach(f => {
+                const val = data[f.k];
+                if (val) lines.push({ text: f.label + ': ' + fieldDisplay(f, val), indent: true, dim: true });
+            });
+        });
+        return lines;
+    };
+    const stepComplete = frag => {
+        const s = stepByTitle(frag);
+        return !!s && s.step.items.every((_, ii) => v.checks[s.base + ii]);
+    };
+
+    blocks.push({ h: 'Case Header', lines: [
+        { text: 'Candidate: ' + v.name, bold: true },
+        { text: 'Role: ' + (v.role || '—') + ' · Depot: ' + (v.depot || '—') + ' · Employment: ' + (v.employment || '—') },
+        { text: 'Date of birth: ' + (v.dob ? fmtDate(v.dob) : '—') + ' · Nationality: ' + (v.nationality || '—') },
+        { text: 'Current address: ' + (v.address || '—') },
+        { text: 'Proposed start: ' + fmtDate(v.startDate) + ' · Case owner: ' + (v.owner || '—') + ' · Case opened: ' + fmtDate(v.createdAt) },
+        { text: 'Assessment date: ' + fmtDate(Date.now()) }
+    ]});
+
+    blocks.push({ h: '1. Evidence Checklist', lines: [
+        { text: 'Classification per SOP §7.1 — Compliant: evidence complete and aligned with DHL rules · Missing: required evidence not yet provided.', dim: true }
+    ].concat(itemLines('Collect Core Evidence'))});
+
+    blocks.push({ h: '2. Interview & Suitability Evidence', lines: itemLines('Face-to-Face Interview').concat([
+        { text: 'Interview outcome: ' + (iv.outcome || 'not assessed') + ' · Score: ' + total + '/50 · ' + auto.label, bold: true }
+    ])});
+
+    blocks.push({ h: '3. 5-Year History Review', lines: [
+        { text: 'SOP rule: no unexplained gap of 28 days or more. A verbal explanation is not evidence.', dim: true }
+    ].concat(itemLines('5-Year Timeline'))});
+
+    const flagged = REDFLAG_ITEMS.filter((_, i) => iv.redFlags[i]);
+    const gate = stepByTitle('Red Flags & Evidence Quality');
+    const gateOpen = gate ? gate.step.items.filter((_, ii) => !v.checks[gate.base + ii]).length : 0;
+    const riskDesc = {
+        'Low': 'File appears complete and ready for DHL. No unresolved issues.',
+        'Medium': 'Potentially workable, but missing items or clarifications remain. Resolve before presenting to DHL.',
+        'High': 'Serious gap, missing critical evidence, or the driver should not start. Escalate immediately.'
+    };
+    const riskLines = [
+        { text: 'Risk level (SOP §7.2): ' + (data.riskLevel || '— not assigned —'), bold: true }
+    ];
+    if (data.riskLevel && riskDesc[data.riskLevel]) riskLines.push({ text: riskDesc[data.riskLevel], dim: true });
+    riskLines.push({ text: 'Missing / weak items: ' + (data.missingItems || '—') });
+    riskLines.push({ text: 'Unresolved red-flag / quality-gate items: ' + (gateOpen ? gateOpen + ' — hard stop, case NOT ready for DHL (SOP §7.4)' : 'none') });
+    riskLines.push({ text: 'Interview red flags: ' + (flagged.length ? flagged.length + ' — ' + flagged.join('; ') : 'none raised') });
+    blocks.push({ h: '4. Risk Assessment', lines: riskLines });
+
+    const sdDesc = {
+        'Yes': 'Full vetting complete. DHL has confirmed acceptance. Driver may start.',
+        'No': 'Critical failure. Evidence cannot support clearance. Do not present to DHL.',
+        'Not yet': 'Evidence is incomplete but resolvable. Case is not ready for DHL review.',
+        'Only with documented DHL exception': 'Evidence has a known weakness. Present to DHL with full disclosure and let DHL decide.'
+    };
+    const sdLines = [{ text: 'Start decision (SOP §7.3): ' + (data.startDecision || '— not recorded —'), bold: true }];
+    if (data.startDecision && sdDesc[data.startDecision]) sdLines.push({ text: sdDesc[data.startDecision], dim: true });
+    blocks.push({ h: '5. Start Decision', lines: sdLines });
+
+    const readiness = [
+        ['Core evidence pack complete', stepComplete('Collect Core Evidence')],
+        ['5-year timeline complete with no unexplained gaps over 28 days', stepComplete('5-Year Timeline')],
+        ['Red flags & evidence quality gate cleared', stepComplete('Red Flags & Evidence Quality')],
+        ['Interview documented and suitability declaration signed', stepComplete('Face-to-Face Interview')],
+        ['Compliance triage complete', stepComplete('Compliance Triage')],
+        ['APHIDS submission recorded', !!(data.aphidsDate || data.aphidsRef)]
+    ];
+    const allReady = readiness.every(r => r[1]);
+    blocks.push({ h: '6. DHL Handoff Readiness', lines: readiness.map(r => ({ text: (r[1] ? '[x] ' : '[ ] ') + r[0] })).concat([
+        { text: allReady
+            ? 'READY FOR DHL REVIEW — present originals in person to the DHL Service Centre Manager.'
+            : 'NOT READY — resolve the unticked items before presenting to DHL. "Sent to DHL" does not mean "approved by DHL".', bold: true }
+    ])});
+
+    blocks.push({ h: '7. Recruiting Manager’s Formal Declaration', lines: [
+        { text: 'I confirm that I have reviewed the evidence on file, the 5-year history, and the interview assessment for ' + v.name + '. I am satisfied that the candidate is suitable to work on the DHL contract, subject to DHL’s own review and written confirmation of acceptance. I understand that no driver may start until full vetting is completed, originals are checked, and DHL has confirmed the case is acceptable.' },
+        { text: ' ' },
+        { text: 'Recruiting Manager: ' + (iv.supervisorName || '_________________________________') },
+        { text: ' ' },
+        { text: 'Signature: _________________________________        Date: _________________' }
+    ]});
+
+    blocks.push({ h: 'Document Control', lines: [
+        { text: 'Candidate: ' + v.name },
+        { text: 'Exported by: ' + exporter, bold: true },
+        { text: 'Exported at: ' + new Date().toLocaleString('en-GB') },
+        { text: 'Basis: BA Express Driver Vetting SOP v1.0 — BA Express Suitability Assessment, completed by the compliance team before DHL handoff.', dim: true }
+    ]});
+
+    return blocks;
+}
+
+function exportSuitability() {
+    const v = getVendor(currentId);
+    const exporter = exporterName();
+    renderDoc('BA EXPRESS — SUITABILITY ASSESSMENT', suitabilityBlocks(v, exporter),
+        'Suitability_Assessment_' + v.name.replace(/\s+/g, '_') + '_' + new Date().toISOString().slice(0, 10));
+}
+
 async function renderDoc(title, blocks, basename, attachments = []) {
     if (window.jspdf && window.jspdf.jsPDF) await renderPdf(title, blocks, basename + '.pdf', attachments);
     else downloadText(blocksToTxt(title, blocks), basename + '.txt');
