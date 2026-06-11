@@ -1156,7 +1156,7 @@
         gap: 13px;
         padding: 11px 12px;
         border-radius: 12px;
-        cursor: pointer;
+        cursor: default;
         transition: background .15s;
     }
 
@@ -1269,6 +1269,11 @@
         background: rgba(255,255,255,.72);
         border: 1px dashed rgba(17,24,39,.16);
         border-radius: 10px;
+        text-decoration: none !important;
+    }
+
+    .check-item > input[type="checkbox"]:checked ~ .check-text .document-upload,
+    .check-item > input[type="checkbox"]:checked ~ .check-text .document-upload * {
         text-decoration: none !important;
     }
 
@@ -3873,10 +3878,9 @@ function updateChecklistProgress(v, gi) {
 }
 
 function toggleCheck(e, gi) {
-    if (e.target.closest && e.target.closest('.item-fields')) return; // typing in a field never toggles
+    if (!e.target.matches('input[type="checkbox"][data-gi]')) return;
     const v = getVendor(currentId);
     const box = document.querySelector('#timeline input[data-gi="' + gi + '"]');
-    if (e.target !== box) box.checked = !box.checked;
 
     // mandatory data: an item with required fields cannot be ticked until they are filled
     if (box.checked) {
