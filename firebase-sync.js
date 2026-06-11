@@ -174,12 +174,54 @@ async function startFirebase() {
 
         async getDocumentBlob(path) {
             if (!user) throw new Error("Sign in before accessing documents.");
-            return storageSdk.getBlob(storageSdk.ref(storage, path));
+            try {
+                console.log('[getDocumentBlob] Attempting primary path:', path);
+                return await storageSdk.getBlob(storageSdk.ref(storage, path));
+            } catch (error) {
+                // Fallback: try with spaces converted to hyphens or vice versa
+                // This handles documents uploaded before/after filename sanitization
+                const alternativePath = path.includes(' ')
+                    ? path.replace(/ +/g, '-')  // Try spaces → hyphens
+                    : path.replace(/-+/g, ' '); // Try hyphens → spaces
+
+                if (alternativePath !== path) {
+                    try {
+                        console.log('[getDocumentBlob] Fallback to alternative path:', alternativePath);
+                        return await storageSdk.getBlob(storageSdk.ref(storage, alternativePath));
+                    } catch (fallbackError) {
+                        console.error('[getDocumentBlob] Both paths failed:', error, fallbackError);
+                        throw error; // Throw original error
+                    }
+                }
+                throw error;
+            }
         },
 
         async deleteDocument(path) {
             if (!user) throw new Error("Sign in before deleting documents.");
-            await storageSdk.deleteObject(storageSdk.ref(storage, path));
+            try {
+                console.log('[deleteDocument] Attempting to delete:', path);
+                await storageSdk.deleteObject(storageSdk.ref(storage, path));
+            } catch (error) {
+                // Fallback: try with spaces converted to hyphens or vice versa
+                const alternativePath = path.includes(' ')
+                    ? path.replace(/ +/g, '-')  // Try spaces → hyphens
+                    : path.replace(/-+/g, ' '); // Try hyphens → spaces
+
+                if (alternativePath !== path) {
+                    try {
+                        console.log('[deleteDocument] Fallback to alternative path:', alternativePath);
+                        await storageSdk.deleteObject(storageSdk.ref(storage, alternativePath));
+                    } catch (fallbackError) {
+                        // If file doesn't exist either way, that's ok (already deleted or never existed)
+                        if (error.code !== "storage/object-not-found" && fallbackError.code !== "storage/object-not-found") {
+                            throw error;
+                        }
+                    }
+                } else if (error.code !== "storage/object-not-found") {
+                    throw error;
+                }
+            }
         },
 
         async authAction() {
