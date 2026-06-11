@@ -1990,7 +1990,10 @@ const STEPS = [
               ] },
             { t: 'DVLA check — code result or share result', s: 'Check points, bans, disqualifications; record the check date',
               doc: { k: 'dvlaCheck', label: 'DVLA Check' },
-              links: [{ label: 'DVLA Driving Check', url: 'https://www.gov.uk/check-driving-information' }],
+              links: [
+                  { label: 'Send to driver — generate code', url: 'https://www.gov.uk/view-driving-licence' },
+                  { label: 'DVLA Driving Check', url: 'https://www.gov.uk/check-driving-information' }
+              ],
               fields: [
                   { k: 'dvlaDate', label: 'Check date', type: 'date', req: true },
                   { k: 'dvlaPoints', label: 'Points / bans / endorsements', type: 'text', ph: 'e.g. None' }
