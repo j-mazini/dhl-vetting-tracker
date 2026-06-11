@@ -63,6 +63,14 @@ async function startFirebase() {
             window.setSyncStatus("syncing", "Saving", "Changes are being saved to Firestore");
         },
 
+        // bypass the debounce — used for document uploads/deletions where the
+        // metadata must reach Firestore before the user can navigate away
+        async flushNow() {
+            if (!user) return;
+            clearTimeout(saveTimer);
+            await flush();
+        },
+
         async deleteOne(id, documentPaths = []) {
             if (!user) return;
             try {
@@ -201,10 +209,29 @@ async function startFirebase() {
             }
             window.setSyncStatus("online", "Synced", `Connected as ${user.email || user.displayName}`);
         } catch (error) {
+            // keep the data and retry — without this, a single failed write left
+            // pendingVendors stranded until the next edit, losing it on tab close
             pendingVendors = snapshot;
+            clearTimeout(saveTimer);
+            saveTimer = setTimeout(flush, 2000);
             showError(error);
         }
     }
+
+    // best-effort flush when the tab is hidden or closing, so the debounce
+    // window cannot swallow recent changes
+    document.addEventListener("visibilitychange", () => {
+        if (document.visibilityState === "hidden" && pendingVendors) {
+            clearTimeout(saveTimer);
+            flush();
+        }
+    });
+    window.addEventListener("beforeunload", () => {
+        if (pendingVendors) {
+            clearTimeout(saveTimer);
+            flush();
+        }
+    });
 
     function listenForVendors() {
         if (unsubscribe) unsubscribe();
