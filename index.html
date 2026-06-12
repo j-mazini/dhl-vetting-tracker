@@ -3613,6 +3613,10 @@ function ivChk(type, idx, checked) {
     return '<label class="iv-check"><input type="checkbox" ' + (checked ? 'checked' : '') + ' onchange="setIvChk(\'' + type + '\',' + idx + ',this.checked)"><span>' + esc(type === 'prep' ? PREP_ITEMS[idx] : type === 'doc' ? DOC_ITEMS[idx] : type === 'flag' ? REDFLAG_ITEMS[idx] : NEXT_ITEMS[idx]) + '</span></label>';
 }
 
+function ivRadio(idx, checked) {
+    return '<label class="iv-check"><input type="radio" name="next-steps" ' + (checked ? 'checked' : '') + ' onchange="setIvRadio(' + idx + ',this.checked)"><span>' + esc(NEXT_ITEMS[idx]) + '</span></label>';
+}
+
 function ivDocRow(idx, iv) {
     const exp = (iv.docExpiry && iv.docExpiry[idx]) || '';
     const expired = exp && exp < new Date().toISOString().slice(0, 10);
@@ -3749,7 +3753,7 @@ function renderInterviewPanel(iv) {
         '</select></div>' +
         (iv.decision==='hire-cond' ? '<div class="field full" style="margin-top:10px"><label>Conditions / requirements</label><textarea rows="3" placeholder="Specify training, probation, or retest requirements…" oninput="setIvTxt(\'conditions\',this.value)">' + esc(iv.conditions||'') + '</textarea></div>' : '') +
         '<div class="iv-sep">Next Steps</div>' +
-        '<ul class="iv-checks">' + NEXT_ITEMS.map((_,i) => ivChk('next',i,iv.nextSteps[i])).join('') + '</ul>' +
+        '<ul class="iv-checks">' + NEXT_ITEMS.map((_,i) => ivRadio(i,iv.nextSteps[i])).join('') + '</ul>' +
         '<div class="form-grid" style="margin-top:14px">' +
             '<div class="field"><label>HR signature</label><input type="text" placeholder="Name / initials" value="' + esc(iv.hrSig||'') + '" oninput="setIvTxt(\'hrSig\',this.value)"></div>' +
             '<div class="field"><label>Supervisor signature</label><input type="text" placeholder="Name / initials" value="' + esc(iv.supervisorSig||'') + '" oninput="setIvTxt(\'supervisorSig\',this.value)"></div>' +
@@ -3834,6 +3838,19 @@ function setIvChk(type, idx, checked) {
     if (type === 'prep') setIvBadge(0, n + '/' + PREP_ITEMS.length, false);
     if (type === 'doc')  setIvBadge(3, n + '/' + DOC_ITEMS.length, false);
     if (type === 'flag') setIvBadge(4, n > 0 ? n + ' flags' : '', n > 0);
+}
+
+function setIvRadio(idx, checked) {
+    const v = getVendor(currentId);
+    const before = v.interview.nextSteps.map((_, i) => v.interview.nextSteps[i] ? i : null).filter(i => i !== null);
+    v.interview.nextSteps.fill(false);
+    if (checked) v.interview.nextSteps[idx] = true;
+    recordAudit(v, 'interview', [{
+        field: 'Interview next steps',
+        before: before.length > 0 ? NEXT_ITEMS[before[0]] : '— none —',
+        after: checked ? NEXT_ITEMS[idx] : '— none —'
+    }]);
+    saveStore();
 }
 
 function setIvTxt(field, value) {
