@@ -4436,6 +4436,18 @@ async function renderPdf(title, blocks, filename, attachments = []) {
         const m = /^\[([x !])\] /.exec(text);
         return m ? { kind: m[1], rest: text.slice(4) } : null;
     };
+
+    // "Label: value · Label: value" lines become aligned label/value rows;
+    // every segment must look like a short label followed by a value
+    const kvPairs = text => {
+        const pairs = [];
+        for (const seg of text.split(' · ')) {
+            const m = /^([^:—·]{2,48}): (.+)$/.exec(seg);
+            if (!m) return null;
+            pairs.push([m[1], m[2]]);
+        }
+        return pairs.length ? pairs : null;
+    };
     const drawMarker = (kind, x, baseline) => {
         const s = 7.5, top = baseline - s + 1;
         if (kind === 'x') {
@@ -4491,6 +4503,27 @@ async function renderPdf(title, blocks, filename, attachments = []) {
         (b.lines || []).forEach(l => {
             const ind = l.indent ? 16 : 0;
             const mk = marker(l.text);
+            const pairs = !mk && !l.dim ? kvPairs(l.text) : null;
+
+            if (pairs) {
+                // label column in small dim caps, value column beside it
+                pairs.forEach(([k, val]) => {
+                    const lx = M + ind, vx = lx + 132;
+                    doc.setFont('helvetica', 'bold'); doc.setFontSize(7.2);
+                    const kl = doc.splitTextToSize(pdfSafe(k).toUpperCase(), vx - lx - 10);
+                    doc.setFont('helvetica', l.bold ? 'bold' : 'normal'); doc.setFontSize(9.5);
+                    const vl = doc.splitTextToSize(pdfSafe(val), W - M - vx);
+                    const rows = Math.max(kl.length, vl.length);
+                    ensure(rows * 13);
+                    doc.setFont('helvetica', 'bold'); doc.setFontSize(7.2); doc.setTextColor(125, 135, 148);
+                    kl.forEach((wl, i) => doc.text(wl, lx, y + i * 13));
+                    doc.setFont('helvetica', l.bold ? 'bold' : 'normal'); doc.setFontSize(9.5); doc.setTextColor(45, 57, 70);
+                    vl.forEach((wl, i) => doc.text(wl, vx, y + i * 13));
+                    y += rows * 13;
+                });
+                return;
+            }
+
             const textX = M + ind + (mk ? 12 : 0);
             doc.setFont('helvetica', l.bold ? 'bold' : 'normal');
             doc.setFontSize(9.5);
