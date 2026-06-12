@@ -4431,36 +4431,76 @@ async function renderPdf(title, blocks, filename, attachments = []) {
     const brandBar = pageDecor; // attachment pages reuse the same backdrop
     const ensure = h => { if (y + h > H - M) { doc.addPage(); pageDecor(); y = M; } };
 
+    // lines starting "[x] ", "[ ] " or "[!] " get a drawn marker instead of literal brackets
+    const marker = text => {
+        const m = /^\[([x !])\] /.exec(text);
+        return m ? { kind: m[1], rest: text.slice(4) } : null;
+    };
+    const drawMarker = (kind, x, baseline) => {
+        const s = 7.5, top = baseline - s + 1;
+        if (kind === 'x') {
+            doc.setFillColor(46, 65, 86);
+            doc.roundedRect(x, top, s, s, 1.5, 1.5, 'F');
+            doc.setDrawColor(255, 255, 255); doc.setLineWidth(1);
+            doc.line(x + 1.8, top + s / 2, x + s / 2 - .4, top + s - 2);
+            doc.line(x + s / 2 - .4, top + s - 2, x + s - 1.6, top + 1.8);
+        } else if (kind === '!') {
+            doc.setFillColor(191, 29, 35);
+            doc.roundedRect(x, top, s, s, 1.5, 1.5, 'F');
+            doc.setFont('helvetica', 'bold'); doc.setFontSize(7); doc.setTextColor(255, 255, 255);
+            doc.text('!', x + s / 2, baseline - 1, { align: 'center' });
+        } else {
+            doc.setDrawColor(160, 170, 182); doc.setLineWidth(.8);
+            doc.roundedRect(x, top, s, s, 1.5, 1.5, 'S');
+        }
+    };
+
     pageDecor();
-    // letterhead logo
+    // letterhead: logo on the left, generation details right-aligned
     const logoW = 86, logoH = logoW * BA_LOGO_RATIO;
     let logoDrawn = false;
     try { doc.addImage(BA_LOGO_B64, 'JPEG', M, 28, logoW, logoH); logoDrawn = true; } catch (e) {}
-    y = logoDrawn ? 28 + logoH + 26 : M + 6;
-    doc.setFont('helvetica', 'bold'); doc.setFontSize(15); doc.setTextColor(34, 48, 63);
-    doc.text(pdfSafe(title), M, y); y += 15;
-    doc.setFont('helvetica', 'normal'); doc.setFontSize(8.5); doc.setTextColor(125, 135, 148);
-    doc.text('Generated ' + new Date().toLocaleString('en-GB') + ' · BA Express Compliance · SOP v1.0', M, y); y += 8;
+    doc.setFont('helvetica', 'normal'); doc.setFontSize(8); doc.setTextColor(125, 135, 148);
+    doc.text('BA Express Compliance', W - M, 40, { align: 'right' });
+    doc.text('Generated ' + new Date().toLocaleString('en-GB'), W - M, 52, { align: 'right' });
+    doc.text('Driver Vetting SOP v1.0', W - M, 64, { align: 'right' });
+    y = (logoDrawn ? 28 + logoH : 70) + 26;
+
+    // title: navy headline over a red-to-navy rule
+    doc.setFont('helvetica', 'bold'); doc.setFontSize(16); doc.setTextColor(34, 48, 63);
+    doc.text(pdfSafe(title), M, y); y += 7;
+    doc.setDrawColor(214, 55, 44); doc.setLineWidth(2);
+    doc.line(M, y, M + 170, y);
+    doc.setDrawColor(46, 65, 86); doc.setLineWidth(.6);
+    doc.line(M + 170, y, W - M, y);
+    y += 6;
 
     blocks.forEach(b => {
         if (b.h) {
-            ensure(40);
+            ensure(48);
+            y += 18;
+            // section header: tinted band with a red accent bar
+            doc.setFillColor(226, 232, 240);
+            doc.rect(M, y - 11, W - 2 * M, 16, 'F');
+            doc.setFillColor(214, 55, 44);
+            doc.rect(M, y - 11, 3, 16, 'F');
+            doc.setFont('helvetica', 'bold'); doc.setFontSize(10); doc.setTextColor(46, 65, 86);
+            doc.text(pdfSafe(b.h.toUpperCase()), M + 9, y);
             y += 16;
-            doc.setFont('helvetica', 'bold'); doc.setFontSize(10.5); doc.setTextColor(46, 65, 86);
-            doc.text(pdfSafe(b.h.toUpperCase()), M, y);
-            y += 5;
-            doc.setDrawColor(214, 55, 44); doc.setLineWidth(.8);
-            doc.line(M, y, W - M, y);
-            y += 13;
         }
         (b.lines || []).forEach(l => {
+            const ind = l.indent ? 16 : 0;
+            const mk = marker(l.text);
+            const textX = M + ind + (mk ? 12 : 0);
             doc.setFont('helvetica', l.bold ? 'bold' : 'normal');
             doc.setFontSize(9.5);
-            if (l.dim) doc.setTextColor(125, 135, 148); else doc.setTextColor(45, 57, 70);
-            const ind = l.indent ? 16 : 0;
-            doc.splitTextToSize(pdfSafe(l.text), W - 2 * M - ind).forEach(wl => {
+            doc.splitTextToSize(pdfSafe(mk ? mk.rest : l.text), W - M - textX).forEach((wl, wi) => {
                 ensure(13);
-                doc.text(wl, M + ind, y);
+                if (mk && wi === 0) drawMarker(mk.kind, M + ind, y);
+                doc.setFont('helvetica', l.bold ? 'bold' : 'normal');
+                doc.setFontSize(9.5);
+                if (l.dim) doc.setTextColor(125, 135, 148); else doc.setTextColor(45, 57, 70);
+                doc.text(wl, textX, y);
                 y += 13;
             });
         });
@@ -4478,6 +4518,17 @@ async function renderPdf(title, blocks, filename, attachments = []) {
             doc.setTextColor(191, 29, 35);
             doc.text(pdfSafe('DOCUMENT COULD NOT BE RENDERED: ' + attachment.fileName), M, M);
         }
+    }
+
+    // footer on every page (attachments included): rule, document title and page numbering
+    const pages = doc.getNumberOfPages();
+    for (let p = 1; p <= pages; p++) {
+        doc.setPage(p);
+        doc.setDrawColor(200, 208, 218); doc.setLineWidth(.5);
+        doc.line(M, H - 30, W - M, H - 30);
+        doc.setFont('helvetica', 'normal'); doc.setFontSize(7.5); doc.setTextColor(125, 135, 148);
+        doc.text(pdfSafe(title), M, H - 18);
+        doc.text('Page ' + p + ' of ' + pages, W - M, H - 18, { align: 'right' });
     }
 
     doc.save(filename);
