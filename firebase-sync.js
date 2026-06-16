@@ -37,7 +37,7 @@ async function startFirebase() {
     const db = firestoreSdk.getFirestore(app);
     const storage = storageSdk.getStorage(app);
     const provider = new authSdk.GoogleAuthProvider();
-    provider.setCustomParameters({ hd: "baexpress.co.uk", prompt: "select_account" });
+    provider.setCustomParameters({ prompt: "select_account" });
     const workspaceId = safeId(settings.workspaceId || "ba-express-vetting");
     const vendorsRef = firestoreSdk.collection(db, "workspaces", workspaceId, "vendors");
 
