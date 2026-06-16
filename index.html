@@ -1973,6 +1973,7 @@
         <button class="btn btn-ghost" onclick="resetCase()">↺ Reset checklist</button>
         <button class="btn btn-ghost" onclick="expandAll()">Expand all</button>
         <button class="btn btn-ghost" onclick="exportSuitability()">🛡 Suitability PDF</button>
+        <button class="btn btn-ghost" onclick="exportSuitabilityDHL()">📤 Export to DHL</button>
         <button class="btn btn-ghost" onclick="exportInterview()">🎤 Export interview</button>
         <button class="btn btn-main" id="exportReportButton" onclick="exportReport()">↓ Export report</button>
     </div>
@@ -4384,6 +4385,62 @@ function exportSuitability() {
     const exporter = exporterName();
     renderDoc('BA EXPRESS — SUITABILITY ASSESSMENT', suitabilityBlocks(v, exporter),
         'Suitability_Assessment_' + v.name.replace(/\s+/g, '_') + '_' + new Date().toISOString().slice(0, 10));
+}
+
+function suitabilityBlocksDHL(v, exporter) {
+    const iv = v.interview || {};
+    const data = v.itemData || {};
+    const total = calcIvTotal(iv);
+    const auto = autoDecision(total, iv);
+    const blocks = [];
+
+    const itemLines = frag => {
+        const found = stepByTitle(frag);
+        if (!found) return [];
+        const lines = [];
+        found.step.items.forEach((it, ii) => {
+            const ok = !!v.checks[found.base + ii];
+            lines.push({ text: (ok ? '[x] ' : '[ ] ') + it.t + ' — ' + (ok ? 'Compliant' : 'Missing'), bold: !ok });
+            (it.fields || []).forEach(f => {
+                const val = data[f.k];
+                if (val) lines.push({ text: f.label + ': ' + fieldDisplay(f, val), indent: true, dim: true });
+            });
+        });
+        return lines;
+    };
+
+    // Case Header
+    blocks.push({ h: 'Case Header', lines: [
+        { text: 'Candidate: ' + v.name, bold: true },
+        { text: 'Role: ' + (v.role || '—') + ' · Depot: ' + (v.depot || '—') + ' · Employment: ' + (v.employment || '—') },
+        { text: 'Date of birth: ' + (v.dob ? fmtDate(v.dob) : '—') + ' · Nationality: ' + (v.nationality || '—') },
+        { text: 'Current address: ' + (v.address || '—') },
+        { text: 'Proposed start: ' + fmtDate(v.startDate) + ' · Case owner: ' + (v.owner || '—') + ' · Case opened: ' + fmtDate(v.createdAt) },
+        { text: 'Assessment date: ' + fmtDate(Date.now()) }
+    ]});
+
+    // Interview & Suitability Evidence only
+    blocks.push({ h: 'Interview & Suitability Evidence', lines: itemLines('Face-to-Face Interview').concat([
+        { text: 'Interview outcome: ' + (iv.outcome || 'not assessed') + ' · Score: ' + total + '/50 · ' + auto.label, bold: true }
+    ])});
+
+    // Recruiting Manager's Formal Declaration
+    blocks.push({ h: 'Recruiting Manager\'s Formal Declaration', lines: [
+        { text: 'I confirm that I have reviewed the evidence on file, the 5-year history, and the interview assessment for ' + v.name + '. I am satisfied that the candidate is suitable to work on the DHL contract, subject to DHL\'s own review and written confirmation of acceptance. I understand that no driver may start until full vetting is completed, originals are checked, and DHL has confirmed the case is acceptable.' },
+        { text: ' ' },
+        { text: 'Recruiting Manager: ' + (iv.supervisorName || '_________________________________') },
+        { text: ' ' },
+        { text: 'Signature: _________________________________        Date: _________________' }
+    ]});
+
+    return blocks;
+}
+
+function exportSuitabilityDHL() {
+    const v = getVendor(currentId);
+    const exporter = exporterName();
+    renderDoc('DHL — SUITABILITY ASSESSMENT', suitabilityBlocksDHL(v, exporter),
+        'DHL_Suitability_Assessment_' + v.name.replace(/\s+/g, '_') + '_' + new Date().toISOString().slice(0, 10));
 }
 
 async function renderDoc(title, blocks, basename, attachments = []) {
