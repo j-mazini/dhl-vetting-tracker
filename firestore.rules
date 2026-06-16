@@ -3,9 +3,11 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
     function isBaExpressUser() {
+      // Accept: @baexpress.co.uk domain OR any account with "baexpress" in email
       return request.auth != null
         && request.auth.token.email != null
-        && request.auth.token.email.matches('^[^@]+@baexpress\\.co\\.uk$');
+        && (request.auth.token.email.matches('^[^@]+@baexpress\\.co\\.uk$')
+          || request.auth.token.email.contains('baexpress'));
     }
 
     function validActor(actor) {
