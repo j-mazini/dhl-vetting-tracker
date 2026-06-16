@@ -4338,6 +4338,13 @@ function interviewNotesOnlyBlocks(v) {
     blocks.push({ h: 'Interview Notes', lines: [
         { text: iv.notes || '—' }
     ]});
+    blocks.push({ h: 'Interview Notes Sign-off', lines: [
+        { text: 'HR Interviewer: ' + (iv.interviewer || '_________________________________') },
+        { text: 'Signature: ' + (iv.hrSig || '_________________________________') + '        Date: _________________' },
+        { text: ' ' },
+        { text: 'Direct Supervisor: ' + (iv.supervisorName || '_________________________________') },
+        { text: 'Signature: ' + (iv.supervisorSig || '_________________________________') + '        Date: _________________' }
+    ]});
     return blocks;
 }
 
