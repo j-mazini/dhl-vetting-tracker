@@ -1708,6 +1708,60 @@
         line-height: 1.5;
     }
 
+    .share-options {
+        display: grid;
+        gap: 10px;
+    }
+
+    .share-option {
+        display: grid;
+        grid-template-columns: 18px 1fr;
+        gap: 12px;
+        padding: 14px;
+        border: 1px solid var(--line);
+        border-radius: 14px;
+        background: rgba(255,255,255,.74);
+        cursor: pointer;
+        transition: border-color .2s, background .2s, box-shadow .2s;
+    }
+
+    .share-option:hover {
+        border-color: rgba(191,29,35,.28);
+        background: #fff;
+        box-shadow: 0 12px 26px rgba(17,24,39,.07);
+    }
+
+    .share-option input {
+        width: 16px;
+        height: 16px;
+        margin-top: 2px;
+        accent-color: var(--ba-red);
+    }
+
+    .share-option strong {
+        display: block;
+        font-size: 13px;
+        color: var(--ba-navy-deep);
+        margin-bottom: 4px;
+    }
+
+    .share-option span {
+        display: block;
+        font-size: 12px;
+        line-height: 1.45;
+        color: var(--muted);
+    }
+
+    .share-error {
+        display: none;
+        margin-top: 12px;
+        font-size: 12px;
+        color: var(--ba-red);
+        font-weight: 700;
+    }
+
+    .share-error.show { display: block; }
+
     .form-grid {
         display: grid;
         grid-template-columns: 1fr 1fr;
@@ -2043,6 +2097,35 @@
         <div class="modal-actions">
             <button class="btn btn-ghost" onclick="closeModal()">Cancel</button>
             <button class="btn btn-main" id="modalSubmit" onclick="submitVendor()">＋ Add vendor</button>
+        </div>
+    </div>
+</div>
+
+<!-- ============ DHL EXPORT MODAL ============ -->
+<div class="modal-backdrop" id="dhlExportBackdrop" onclick="if(event.target===this) closeDhlExportModal()">
+    <div class="modal">
+        <h2>Export to DHL</h2>
+        <div class="modal-sub">Choose exactly what should be included in the handoff document for DHL.</div>
+        <div class="share-options">
+            <label class="share-option">
+                <input type="checkbox" id="shareDhlSuitability" checked>
+                <span>
+                    <strong>Suitability assessment</strong>
+                    <span>Case header, interview suitability evidence and recruiting manager declaration.</span>
+                </span>
+            </label>
+            <label class="share-option">
+                <input type="checkbox" id="shareDhlInterview" checked>
+                <span>
+                    <strong>Interview notes</strong>
+                    <span>Face-to-face interview notes recorded for this driver.</span>
+                </span>
+            </label>
+        </div>
+        <div class="share-error" id="dhlExportError">Select at least one item to share.</div>
+        <div class="modal-actions">
+            <button class="btn btn-ghost" onclick="closeDhlExportModal()">Cancel</button>
+            <button class="btn btn-main" onclick="confirmDhlExport()">📤 Export selected</button>
         </div>
     </div>
 </div>
@@ -4259,14 +4342,38 @@ function interviewNotesOnlyBlocks(v) {
 }
 
 function exportToDHL() {
+    openDhlExportModal();
+}
+
+function openDhlExportModal() {
+    document.getElementById('shareDhlSuitability').checked = true;
+    document.getElementById('shareDhlInterview').checked = true;
+    document.getElementById('dhlExportError').classList.remove('show');
+    document.getElementById('dhlExportBackdrop').classList.add('show');
+}
+
+function closeDhlExportModal() {
+    document.getElementById('dhlExportBackdrop').classList.remove('show');
+}
+
+function confirmDhlExport() {
+    const includeSuitability = document.getElementById('shareDhlSuitability').checked;
+    const includeInterview = document.getElementById('shareDhlInterview').checked;
+    const error = document.getElementById('dhlExportError');
+    if (!includeSuitability && !includeInterview) {
+        error.classList.add('show');
+        return;
+    }
+
     const v = getVendor(currentId);
-    const exporter = exporterName();
+    const exporter = includeSuitability ? exporterName() : '';
     const blocks = [];
 
-    blocks.push(...suitabilityBlocksDHL(v, exporter));
-    blocks.push({ h: '', lines: [{ text: '' }] });
-    blocks.push(...interviewNotesOnlyBlocks(v));
+    if (includeSuitability) blocks.push(...suitabilityBlocksDHL(v, exporter));
+    if (includeSuitability && includeInterview) blocks.push({ h: '', lines: [{ text: '' }] });
+    if (includeInterview) blocks.push(...interviewNotesOnlyBlocks(v));
 
+    closeDhlExportModal();
     renderDoc('BA EXPRESS — DHL HANDOFF DOCUMENTS', blocks,
         'DHL_Handoff_' + v.name.replace(/\s+/g, '_') + '_' + new Date().toISOString().slice(0, 10));
 }
@@ -4727,6 +4834,7 @@ function downloadText(text, filename) {
 ===================================================== */
 document.addEventListener('keydown', e => {
     if (e.key === 'Escape' && document.getElementById('modalBackdrop').classList.contains('show')) closeModal();
+    if (e.key === 'Escape' && document.getElementById('dhlExportBackdrop').classList.contains('show')) closeDhlExportModal();
     if (e.key === 'Enter' && document.getElementById('modalBackdrop').classList.contains('show')
         && e.target.tagName === 'INPUT') submitVendor();
 });
